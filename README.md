@@ -92,5 +92,3 @@ git switch --track origin/feat/api
 Bogedale, L.; Doerfel, S.; Schrodt, A.; Heim, H.-P. *Online Prediction of Molded Part Quality in the Injection Molding Process Using High-Resolution Time Series.* Polymers 2023, 15, 978. [https://doi.org/10.3390/polym15040978](https://doi.org/10.3390/polym15040978) (CC BY 4.0).
 
 CSV는 원본 압력 곡선을 평균 다운샘플링한 파생 데이터입니다. 실제 CSV는 A가 전처리 후 추가합니다.
-
-기초 코드는 제공된 개인 실습 스켈레톤을 사용합니다. 원본 안내: “다음 실습 코드는 학습 목적으로만 사용 바랍니다.” 문의: architect@sk.com, audit@korea.ac.kr 임성열 Ph.D.
