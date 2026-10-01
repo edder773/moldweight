@@ -1,0 +1,19 @@
+# 원본 데이터 (91 MB) — 전처리 스크립트와 CSV 두 개만 올림
+*.h5
+dataset*.zip
+
+# 실행하면 생기는 것
+mlruns/
+mlflow.db
+logs/
+data/uploads/*
+!data/uploads/.gitkeep
+serving_app/models/*.keras
+
+# 개발 환경
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
