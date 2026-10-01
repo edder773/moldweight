@@ -61,6 +61,19 @@ scripts/smoke_test.sh
 
 확인 서버가 다른 주소라면 `BASE_URL=http://localhost:8000 scripts/smoke_test.sh`를 사용합니다.
 
+## CI
+
+GitHub Actions는 `main` push, `main` 대상 PR, 수동 실행에서 다음을 확인합니다.
+
+- Python 3.11·Bash 문법과 커밋의 공백 오류
+- `runtime`·`trained` 두 타깃의 Compose 설정
+- Linux AMD64 `runtime` 이미지 빌드, 컨테이너 healthcheck, `/health`·`/`·`/docs`·`/logs` 응답
+- 컨테이너의 패키지 의존성 충돌 (`pip check`)
+
+현재 CI는 서버 기동까지 확인합니다. B/C 통합 후 수행할 `trained` 학습 빌드, 실제 모델 예측, RULES 10장의 smoke 세 항목과 실제 모델 p95는 아직 자동 검증에 포함하지 않았습니다. 컨테이너의 `healthy` 표시와 CI 성공만으로 모델 준비 완료를 판단하지 않습니다.
+
+Docker 빌드 레이어를 캐시하며, 이미지 배포·Registry push는 수행하지 않습니다. 실행 결과는 저장소의 [Actions](https://github.com/edder773/moldweight/actions)에서 확인할 수 있습니다.
+
 ## API 계약
 
 | 메서드 | 경로 | 계약 |

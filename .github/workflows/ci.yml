@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  static-checks:
+    name: Python, Bash and Compose checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax
+        run: python -m compileall -q data serving_app scripts
+
+      - name: Check Bash syntax
+        run: |
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(git ls-files -z '*.sh')
+
+      - name: Check commit whitespace
+        run: git show --format= --check HEAD
+
+      - name: Validate runtime and trained Compose settings
+        run: |
+          MOLDWEIGHT_BUILD_TARGET=runtime MODEL_SOURCE=local LOADING_MODE=lazy \
+            docker compose -f serving_app/docker-compose.yml config --quiet
+          MOLDWEIGHT_BUILD_TARGET=trained MODEL_SOURCE=mlflow LOADING_MODE=eager \
+            docker compose -f serving_app/docker-compose.yml config --quiet
+
+  docker-runtime:
+    name: Docker runtime build and startup
+    needs: static-checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: moldweight-ci
+      MOLDWEIGHT_BUILD_TARGET: runtime
+      MODEL_SOURCE: local
+      LOADING_MODE: lazy
+      MOLDWEIGHT_PORT: "8000"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build runtime image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: serving_app/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: moldweight-serving:runtime
+          cache-from: type=gha,scope=moldweight-runtime-amd64
+          cache-to: type=gha,scope=moldweight-runtime-amd64,mode=max,ignore-error=true
+
+      - name: Start server and wait for Docker healthcheck
+        run: |
+          docker compose -f serving_app/docker-compose.yml up \
+            --no-build --pull never -d --wait --wait-timeout 90
+
+      - name: Verify server endpoints
+        run: |
+          python3 - <<'PY'
+          import json
+          from urllib.request import urlopen
+
+          base = "http://127.0.0.1:8000"
+          with urlopen(base + "/health", timeout=10) as response:
+              assert response.status == 200
+              health = json.load(response)
+          assert health["status"] == "ok", health
+          assert health["loading_mode"] == "lazy", health
+          assert type(health["model_loaded"]) is bool, health
+          print(f"/health: {health}")
+          for path in ("/", "/docs", "/logs"):
+              with urlopen(base + path, timeout=10) as response:
+                  assert response.status == 200, (path, response.status)
+              print(f"{path}: 200")
+          PY
+
+      - name: Check installed dependencies
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            serving-app python -m pip check
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          docker compose -f serving_app/docker-compose.yml ps -a
+          docker compose -f serving_app/docker-compose.yml logs --no-color --tail 200
+
+      - name: Remove CI containers
+        if: always()
+        run: docker compose -f serving_app/docker-compose.yml down --remove-orphans
