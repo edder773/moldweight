@@ -4,7 +4,7 @@
 
 ## 현재 통합 상태
 
-2026-10-01 기준, PR #1~#9가 main에 반영됐습니다. 아래 실측은 기준 커밋 [`8bafcc7`](https://github.com/edder773/moldweight/commit/8bafcc7eb9a8878f84c04f0f2733e93b5aaa5408)의 코드로 수행했습니다.
+2026-10-01 기준, PR #1~#12가 main에 반영됐습니다. 모델·API·대시보드의 검증 기준은 [`dc46707`](https://github.com/edder773/moldweight/commit/dc4670709504a0450f2ee159baadde2b44c9642f)이며 E의 통합 검증 스크립트와 CI를 추가했습니다.
 
 | 영역 | 반영된 내용 |
 |---|---|
@@ -13,7 +13,7 @@
 | API | 실제 모델 예측, 곡선 검증, CSV 업로드, 샷 배치 테스트 |
 | 모니터링 | 최근 21샷 RMSE, 41샷 수집 후 fine-tune, 게이트 실패 시 기존 Production 유지 |
 | 인프라 | runtime/trained Docker 타깃, Compose, smoke, 실제 모델 p95 측정, CI |
-| 대시보드·시연 | 화면은 제공되지만 압력 곡선 API로의 변환이 남아 있음 |
+| 대시보드·시연 | 압력 곡선 `{shots}` 계약 연결, 정상·70°C 시나리오, 게이트 결과·서빙 버전·알람 표시 |
 
 실제 모델 연결과 모니터링 수정은 반영됐습니다. 예측 API에는 가짜 모델이나 `USE_MOCK_MODEL` 분기가 없습니다. 드리프트 판단용 예측 21개와 재학습용 샷 41개가 모두 모이기 전에는 재학습을 시작하지 않습니다. 배포 게이트는 NaN·무한대 RMSE를 거부하며, 스케일러는 검증 데이터를 제외한 학습 샷으로만 fit합니다.
 
@@ -23,22 +23,20 @@
 |---|---|---|---|---|
 | A 데이터·기획·제출 | 장인우 | @inwoo-jang | `feat/data` | 데이터·설정·RULES 관리, B의 실측을 받아 RULES 6장과 제출 자료 반영 |
 | B 모델·학습 | 이도권 | @dokwon33 | `feat/model` | 모델·스케일러·게이트·Registry, 분할 방식과 검증 수치를 A에게 전달 |
-| C 서빙 API | 김선주 | @ssunju-02 | `feat/api` | 스키마·예측·업로드·배치 API, 중복 reload 정리, Swagger 명세 전달 |
+| C 서빙 API | 김선주 | @ssunju-02 | `feat/api` | 스키마·예측·업로드·배치 API, Swagger 명세 전달 |
 | D 모니터링·재학습 | 김주은 | @jekim20 | `feat/monitor` | 드리프트·fine-tune 연결·게이트 결과 로그 |
-| E 인프라·통합 | 김보석 | @edder773 | `feat/infra` | Docker·PR 통합·smoke·p95·CI, F 수정 후 화면 통합 재검증 |
-| F 대시보드·시연 | 조영우 | @evermate | `feat/dashboard` | 대시보드와 시뮬레이터를 샷 계약으로 변환, 시연 화면 캡처 |
+| E 인프라·통합 | 김보석 | @edder773 | `feat/infra` | Docker·PR 통합·smoke·p95·CI, 실제 모델·화면 통합 검증 |
+| F 대시보드·시연 | 조영우 | @evermate | `feat/dashboard` | 샷 기반 대시보드·시뮬레이터, 시연 화면 캡처 |
 
 파일별 소유자는 RULES 1장을 따릅니다. 소유자가 아닌 파일의 수정은 해당 담당자에게 요청합니다.
 
+E 통합 검증을 완료했습니다. PR #11의 C+D 호출 경로는 승격 성공 시 reload 1회·실패 시 0회이며, lazy/eager 모드에서 확인했습니다. 이 호출 횟수 검증은 학습과 모델 로딩을 대체하여 수행했고, 아래 드리프트·게이트·버전 전환 검증은 실제 모델로 별도 수행했습니다. PR #12 대시보드의 정상 샷 전송, 게이트 실패 시 v1 유지, 게이트 통과 후 v2 전환을 확인했으며 CSV 업로드와 알람 표시도 확인했습니다.
+
 현재 후속 작업은 다음과 같습니다.
 
-- **C:** `serving_app/routers/predict.py:125`의 추가 reload 호출을 제거하고 재학습 후 예측 기록 초기화는 유지합니다. 현재 C+D 호출 경로는 승격 성공 시 reload 2회, 실패 시 1회입니다. D 단독 경로는 성공 1회·실패 0회로 정상이며, eager 모드의 불필요한 모델 로딩을 줄이려면 호출을 D에 일원화해야 합니다. 이 결과는 기준 main에서 학습·로딩을 대체한 호출 횟수 검증으로 재현했습니다.
-- **F:** `serving_app/static/index.html`의 주가 CSV 안내와 `{prices}` 요청을 MoldWeight CSV·`{shots}` 계약으로 변경합니다. 현재 배치 버튼의 요청은 API에서 422가 됩니다.
-- **F:** `scripts/simulate_drift.py`의 `Close` 기반 로직과 미구현 `send_batch`를 실험 23의 압력 곡선·실측 무게 전송으로 변경합니다.
-- **E:** C 수정 후 승격 성공 시 reload 1회·실패 시 0회를 확인하고, F의 수정 반영 후 화면에서 업로드·예측 → 드리프트 → 재학습 → 게이트 → 모델 버전 전환을 확인합니다. 해당 화면 시연은 아직 완료 상태로 표시하지 않습니다.
 - **A/B:** RULES 6장의 빈 표에 실제 분할 방식과 검증 RMSE를 반영합니다. 현재 코드의 base 분할은 420/106샷, fine-tune 분할은 최근 41샷 중 32/9샷입니다.
-
-대시보드 수정 전에는 [Swagger](http://localhost:8000/docs)와 smoke 스크립트로 실제 API를 확인합니다.
+- **C:** 제출 자료용 Swagger 화면·API 명세를 A에게 전달합니다.
+- **F:** 정상 판정·게이트 실패·게이트 통과와 모델 버전 전환 화면을 캡처하여 A의 시연·제출 자료에 전달합니다.
 
 ## 실행
 
@@ -70,6 +68,34 @@ BASE_URL=http://127.0.0.1:8000 P95_SAMPLES=100 bash scripts/smoke_test.sh
 대시보드: [http://localhost:8000/](http://localhost:8000/) · Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 업로드 CSV·로그·MLflow DB·아티팩트는 컨테이너 안에 저장합니다. `restart`는 상태를 유지하지만, 컨테이너를 재생성하면 이미지에 포함된 초기 상태로 돌아갑니다.
+
+### 대시보드와 드리프트 시연
+
+1. 새 trained 서버에서 대시보드를 열고 정상 파일에 `data/sample_moldweight.csv`, 공정 변경 파일에 `data/drift_shots_23.csv`를 선택합니다.
+2. **정상 생산 샷 21개 보내기**로 정상 판정을 확인합니다.
+3. **금형온도 70°C로 바뀐 샷 21개 보내기**를 두 차례 눌러 드리프트 → 재학습 → 게이트와 실제 서빙 버전·운영 알람을 확인합니다. 시작 샷은 기본 `21122`이며 정상 파일의 마지막 21샷을 사용합니다.
+
+2026-10-01 실측에서는 정상 RMSE 0.163g, 첫 드리프트 배치의 게이트 실패(RMSE 0.569g) 후 v1 유지, 다음 배치의 게이트 통과(RMSE 0.027g) 후 v2 서빙을 확인했습니다. 학습 상태와 실행 환경에 따라 게이트 결과는 달라질 수 있습니다. 정상 샷을 보내지 않고 드리프트 21샷만 전송하면 41샷 미만이므로 재학습을 보류합니다.
+
+같은 구간을 CLI로 확인할 수 있습니다.
+
+```bash
+python scripts/simulate_drift.py --url http://127.0.0.1:8000 \
+  --drift-start 21122 --max-drift-batches 2
+```
+
+화면의 파일 선택은 브라우저에서 CSV를 읽어 `{shots}`를 만드는 동작입니다. 접힌 업로드 패널은 별도로 `/data/upload`에 파일을 저장하고 요약합니다. 업로드만으로 모델을 학습하거나 전환하지 않습니다. 현재 base 학습의 기본 입력은 `data/sample_moldweight.csv`이며 fine-tune은 배치 API로 누적한 최근 41샷을 사용합니다. 업로드 CSV를 base 학습에 쓰려면 `train_and_register(csv_path=...)`에 저장 경로를 명시해야 합니다.
+
+### E 통합 검증 재현
+
+새 trained 테스트 서버에서만 아래 명령을 실행합니다. CSV 파일을 저장하고 샷 버퍼와 Production 모델 버전을 변경하므로 매번 새 컨테이너로 시작합니다.
+
+```bash
+docker compose -f serving_app/docker-compose.yml exec -T \
+  -e INTEGRATION_TEST=1 serving-app bash scripts/smoke_test.sh
+```
+
+기본 smoke 3개 항목에 더해 40행 업로드 거부·정상 CSV 저장 및 요약, 20샷 판정 대기·21샷 정상·총 40샷 재학습 보류, 70°C 구간의 재학습·게이트 결과와 실제 `/predict.model_version` 일치, 운영 알람을 확인합니다. 게이트 실패가 발생하면 기존 버전 유지도 검사하며, 두 드리프트 배치에서 최소 한 번의 승격을 요구합니다. 기본 smoke에는 이 상태 변경 검증을 포함하지 않으며 재학습 요청의 제한 시간은 `INTEGRATION_REQUEST_TIMEOUT`(기본 600초)으로 조절합니다.
 
 ### Docker: 서버 기동만 확인
 
@@ -134,36 +160,38 @@ CSV 필수 컬럼은 `cycle_counter, weight, inj_000~inj_127, cav_000~cav_127`�
 
 ## 검증과 p95 실측
 
-2026-10-01, 기준 커밋 `8bafcc7eb9a8878f84c04f0f2733e93b5aaa5408`으로 별도 trained 이미지를 빌드하고 아래 결과를 확인했습니다.
+2026-10-01, `dc4670709504a0450f2ee159baadde2b44c9642f` 기반 소스에 E 통합 검증 스크립트를 추가하여 별도 trained 이미지를 새로 빌드하고 아래 결과를 확인했습니다.
 
 | 검증 | 결과 |
 |---|---|
 | Production 학습·게이트 | v1 등록, 검증 RMSE **0.117024g** |
 | Registry와 API 버전 일치 | Registry `"1"` = `/predict.model_version` |
 | RULES 10장 smoke | `/health model_loaded=true`, 정상 예측 200·유한한 숫자, 127포인트 곡선 422 — **3/3 통과** |
-| 단일 예측 응답 시간 p95 | **41.748ms**, 100회 순차 요청, nearest-rank |
+| 단일 예측 응답 시간 p95 | **44.584ms**, 100회 순차 요청, nearest-rank |
+| 업로드 | 화면에서 41행 저장·요약, 자동 검증에서 40행 400·526행 저장·요약 |
+| 드리프트·재학습 가드 | 20샷 판정 대기, 21샷 정상, 총 40샷 드리프트 감지 후 재학습 보류 |
+| 실제 게이트·서빙 전환 | 실패 시 v1 유지, 통과 후 v2 서빙, WARN·INFO·FAIL·OK 로그 확인 |
 
-측정 환경은 Apple M5 / macOS 26.6.2, Docker 29.6.1(Linux ARM64, CPU 10개·메모리 약 7.75GiB), Python 3.11.16, TensorFlow 2.21.0, MLflow 3.16.0, NumPy 2.4.4입니다. 모델은 `MODEL_SOURCE=mlflow`, `LOADING_MODE=eager`, Production v1이며 MLflow run ID는 `1d75efa777234a30b4616a7bda3ccc5c`입니다.
+측정 환경은 Apple M5 / macOS 26.6.2, Docker 29.6.1(Linux ARM64, CPU 10개·메모리 약 7.75GiB), Python 3.11.16, TensorFlow 2.21.0, MLflow 3.16.0, NumPy 2.4.4입니다. 모델은 `MODEL_SOURCE=mlflow`, `LOADING_MODE=eager`, Production v1이며 MLflow run ID는 `7033f0cd6a3e40b7a31a7255a4a96a04`입니다.
 
-p95는 호스트에서 `http://127.0.0.1:18082/predict`로 실험 23의 첫 곡선을 반복 전송해 측정했습니다. 정상 예측 smoke 후 수행한 warm 요청으로, 요청 직전부터 응답 JSON 수신까지의 시간을 정렬하여 95번째 값을 기록했습니다. 시작·첫 모델 로딩·재학습 시간은 포함하지 않습니다. 이 수치는 해당 환경의 실측이며 다른 하드웨어나 동시 부하의 성능을 보장하지 않습니다.
+p95는 호스트에서 `http://127.0.0.1:18085/predict`로 실험 23의 첫 곡선을 반복 전송해 측정했습니다. 정상 예측 smoke 후 수행한 warm 요청으로, 요청 직전부터 응답 JSON 수신까지의 시간을 정렬하여 95번째 값을 기록했습니다. 시작·첫 모델 로딩·재학습 시간은 포함하지 않습니다. 이 수치는 해당 환경의 실측이며 다른 하드웨어나 동시 부하의 성능을 보장하지 않습니다.
 
 재현 명령은 다음과 같습니다. 서버 기동 명령에도 같은 포트를 지정합니다.
 
 ```bash
-BASE_URL=http://127.0.0.1:18082 P95_SAMPLES=100 bash scripts/smoke_test.sh
+BASE_URL=http://127.0.0.1:18085 P95_SAMPLES=100 bash scripts/smoke_test.sh
 ```
 
-## CI와 main 보호
+## CI
 
 GitHub Actions는 `main` push, `main` 대상 PR, 수동 실행에서 순서대로 확인합니다.
 
 1. Python 3.11·Bash 문법, 커밋 공백 오류, runtime/trained Compose 설정.
 2. Linux AMD64 runtime 이미지 빌드, 컨테이너 healthcheck, `/health`·`/`·`/docs`·`/logs` 응답, `pip check`.
 3. Linux AMD64 trained 이미지의 실제 학습·게이트·Production 로딩, Registry와 API 버전 일치, RULES smoke 3개 항목, 100회 warm 예측 p95.
+4. 새 trained 서버에서 업로드·드리프트·재학습·게이트·실제 서빙 버전 전환 통합 검증.
 
-trained CI의 커밋·Production 버전·smoke·p95는 실행 요약에 남습니다. CI의 p95는 컨테이너 내부 loopback에서 측정하므로 위 호스트 → Docker 실측과 측정 경로가 다릅니다. 고정 p95 합격 기준은 설정하지 않았습니다. 이미지를 배포하거나 Registry에 push하지 않으며, 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
-
-2026-10-01 main 보호를 복구했습니다. 관리자에게도 PR 경로를 적용하며 직접 push·강제 push·main 삭제를 차단합니다. 별도의 필수 승인 수나 필수 CI 상태 조건은 설정하지 않았습니다. E는 통합 검증과 smoke 결과를 확인한 후 PR을 병합합니다.
+trained CI의 커밋·Production 버전·smoke·p95·통합 검증 결과는 실행 요약에 남습니다. CI의 p95는 컨테이너 내부 loopback에서 측정하므로 위 호스트 → Docker 실측과 측정 경로가 다릅니다. 고정 p95 합격 기준은 설정하지 않았습니다. 이미지를 배포하거나 Registry에 push하지 않으며, 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
 
 ## 협업
 
