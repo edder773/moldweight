@@ -13,6 +13,7 @@ MLflow로 무게 예측 LSTM을 학습 -> 기록(Tracking) -> 게이트 검증 -
     python scripts/train_baseline_v1.py        # 최초 1회 (scaler.pkl 생성)
     python serving_app/train_and_register.py
 """
+import math
 import os
 import sys
 
@@ -141,6 +142,13 @@ def _evaluate_gates(
 
     반환: (통과 여부, 사유 문자열)
     """
+    # NaN/inf를 가장 먼저 거릅니다. NaN은 모든 비교가 False라 아래의 `score > RMSE_GATE`를
+    # 그대로 통과해 버리고, 그러면 학습이 발산한 모델이 Production을 교체합니다.
+    # (가중치가 NaN이 되면 예측도 NaN이 되고 RMSE도 NaN입니다.)
+    for name, value in (("rmse", score), ("holdout_rmse", holdout_score)):
+        if not math.isfinite(value):
+            return False, f"{name}가 유한한 값이 아님 ({value}) - 학습 발산 가능"
+
     if score > RMSE_GATE:
         return False, f"절대 성능 미달 rmse={score:.3f} > {RMSE_GATE}"
 
@@ -155,6 +163,11 @@ def _evaluate_gates(
                 f"(평균예측 {baseline:.3f}의 {1 - BASELINE_IMPROVE:.0%})"
             )
         return True, f"첫 배포 rmse={score:.3f} (평균예측 {baseline:.3f} 대비 개선)"
+
+    # prev_rmse가 NaN이면 비교 자체가 무의미하므로(어떤 비교도 False) 회귀 방지를 건너뛰지 않고
+    # 막습니다. 기존 Production이 발산한 모델이라는 뜻이라 사람이 봐야 합니다.
+    if prev_rmse is not None and not math.isfinite(prev_rmse):
+        return False, f"기존 v{prev_version}의 rmse가 유한한 값이 아님 ({prev_rmse}) - 수동 확인 필요"
 
     if prev_rmse is not None and score > prev_rmse + REGRESSION_MARGIN:
         return False, (

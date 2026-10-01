@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data.features import load_rows, build_sequences, train_test_split, CurveScaler
+from data.features import load_rows, build_sequences, split_indices, train_test_split, CurveScaler
 from serving_app.config import BASE_EPOCHS, RMSE_GATE, SEED, SCALER_PATH
 from serving_app.lstm_model import build_model
 
@@ -44,10 +44,13 @@ def main():
     rows = load_rows(csv_path)
     print(f"{csv_path}: {len(rows)}샷 로드")
 
-    scaler = CurveScaler().fit(rows)
+    # 스케일러는 train 몫으로만 fit합니다. 전체로 fit하면 검증 샷의 min/max가 정규화 기준에
+    # 섞여 들어가(누수) 검증 RMSE가 실제 일반화 성능보다 좋게 나옵니다.
+    train_idx, _ = split_indices(rows)
+    scaler = CurveScaler().fit([rows[i] for i in train_idx])
     os.makedirs(os.path.dirname(SCALER_PATH), exist_ok=True)
     scaler.save(SCALER_PATH)
-    print(f"scaler fit -> {SCALER_PATH}")
+    print(f"scaler fit ({len(train_idx)}샷, train 몫만) -> {SCALER_PATH}")
     print(f"  채널 min/max: inj [{scaler.channel_min[0]:.2f}, {scaler.channel_max[0]:.2f}]  "
           f"cav [{scaler.channel_min[1]:.2f}, {scaler.channel_max[1]:.2f}]")
     print(f"  무게 min/max: [{scaler.weight_min:.3f}, {scaler.weight_max:.3f}] g")
