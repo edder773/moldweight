@@ -3,31 +3,55 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AIOps · HAIC 재학습 파이프라인</title>
+<title>MoldWeight · 가상계측 AIOps 대시보드</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <style>
+  /* ---------- 테마 토큰: 라이트 기본, 다크는 data-theme 또는 OS 설정 ---------- */
   :root {
-    --bg: #0a0c10;
-    --panel: #12151c;
-    --panel-2: #171b25;
-    --border: #262b38;
-    --text: #eef1f7;
-    --muted: #9aa4b8;
-    --faint: #5b6478;
-    --accent: #6c8dff;
-    --accent-soft: rgba(108, 141, 255, 0.16);
-    --ok: #3ddc97;
-    --ok-soft: rgba(61, 220, 151, 0.14);
-    --warn: #f5b64c;
-    --warn-soft: rgba(245, 182, 76, 0.14);
-    --err: #ff6b6b;
-    --err-soft: rgba(255, 107, 107, 0.14);
+    --bg: #f3f5f8;
+    --panel: #ffffff;
+    --panel-2: #f7f8fb;
+    --border: #dfe3ea;
+    --text: #1c2230;
+    --muted: #5f6b7d;
+    --faint: #9aa4b5;
+    --accent: #4f46e5;
+    --accent-soft: #eceafd;
+    --ok: #15803d;
+    --ok-soft: #e6f6ec;
+    --warn: #b45309;
+    --warn-soft: #fff3e0;
+    --err: #b91c1c;
+    --err-soft: #fdecec;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
   }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --border: #2a2f3a;
+    --text: #e9edf3; --muted: #9aa4b8; --faint: #5d6678;
+    --accent: #8b85f7; --accent-soft: rgba(139, 133, 247, 0.16);
+    --ok: #3ddc97; --ok-soft: rgba(61, 220, 151, 0.14);
+    --warn: #f5b64c; --warn-soft: rgba(245, 182, 76, 0.14);
+    --err: #ff6b6b; --err-soft: rgba(255, 107, 107, 0.14);
+    --shadow: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --border: #2a2f3a;
+      --text: #e9edf3; --muted: #9aa4b8; --faint: #5d6678;
+      --accent: #8b85f7; --accent-soft: rgba(139, 133, 247, 0.16);
+      --ok: #3ddc97; --ok-soft: rgba(61, 220, 151, 0.14);
+      --warn: #f5b64c; --warn-soft: rgba(245, 182, 76, 0.14);
+      --err: #ff6b6b; --err-soft: rgba(255, 107, 107, 0.14);
+      --shadow: none;
+    }
+  }
+
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
 
+  /* ---------- 상단 바 ---------- */
   .topnav {
     display: flex; align-items: center; gap: 14px; justify-content: space-between;
     background: var(--panel); border-bottom: 1px solid var(--border);
@@ -35,77 +59,126 @@
   }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand-mark {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: linear-gradient(135deg, var(--accent), #a9bdff);
-    display: flex; align-items: center; justify-content: center; color: #0a0c10;
-    flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
   }
   .brand-text .title { font-weight: 700; font-size: 1.02rem; line-height: 1.2; }
   .brand-text .subtitle { font-size: 0.72rem; color: var(--muted); }
-  .nav-right { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--muted); }
+  .nav-right { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; justify-content: flex-end; }
+
   .pill {
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
-    font-size: 0.74rem; font-weight: 700;
+    font-size: 0.74rem; font-weight: 700; line-height: 1.5;
   }
+  .pill.big { font-size: 0.86rem; padding: 6px 14px; }
   .pill.ok { background: var(--ok-soft); color: var(--ok); }
   .pill.warn { background: var(--warn-soft); color: var(--warn); }
   .pill.err { background: var(--err-soft); color: var(--err); }
-  .pill.neutral { background: var(--panel-2); color: var(--muted); }
+  .pill.neutral { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+  .pill.accent { background: var(--accent-soft); color: var(--accent); }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-  .page { max-width: 980px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .page { max-width: 1040px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 
-  .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-    padding: 18px 20px;
+  /* ---------- 카드 ---------- */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .section-head { margin-bottom: 12px; }
+  .section-head h2 { margin: 0 0 3px; font-size: 1.02rem; display: flex; align-items: center; gap: 8px; }
+  .step {
+    display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent); font-size: 0.72rem; font-weight: 800; flex-shrink: 0;
   }
-  .section-head { margin-bottom: 14px; }
-  .section-head h2 { margin: 0 0 3px; font-size: 1.05rem; }
-  .section-head p { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
+  .section-head p { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.55; }
   .section-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
-  .btn { border: none; border-radius: 9px; padding: 9px 14px; font-size: 0.83rem; font-weight: 700; cursor: pointer; }
-  .btn.primary { background: var(--accent); color: #0a0c10; }
+  .btn { border: none; border-radius: 9px; padding: 9px 14px; font-size: 0.83rem; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--text); }
+  .btn.primary { background: var(--accent); color: #fff; }
   .btn.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
-  .btn.danger { background: var(--err); color: #1a0a0a; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.danger { background: var(--err); color: #fff; }
+  .btn.small { padding: 5px 10px; font-size: 0.76rem; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
 
-  /* ---------- Upload ---------- */
-  .upload-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  input[type="file"] {
-    color: var(--muted); font-size: 0.82rem; max-width: 100%;
+  /* ---------- 시나리오 버튼 (시연용 큰 버튼) ---------- */
+  .scenario-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  @media (max-width: 700px) { .scenario-row { grid-template-columns: 1fr; } }
+  .scenario {
+    text-align: left; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    background: var(--panel-2); cursor: pointer; font-family: inherit; color: var(--text);
+    display: flex; flex-direction: column; gap: 4px;
   }
+  .scenario:hover:not(:disabled) { border-color: var(--accent); }
+  .scenario:disabled { opacity: 0.45; cursor: not-allowed; }
+  .scenario .t { font-size: 0.98rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .scenario .t .tag { font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+  .scenario.normal .t .tag { background: var(--ok-soft); color: var(--ok); }
+  .scenario.drift .t .tag { background: var(--err-soft); color: var(--err); }
+  .scenario .d { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .scenario .p { font-size: 0.74rem; color: var(--faint); font-family: var(--mono); }
 
-  /* ---------- Pipeline ---------- */
-  .pipeline-meta { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--muted); }
-  .pipeline-track { display: flex; align-items: stretch; overflow-x: auto; padding: 2px 2px 4px; gap: 0; }
-  .pipe-stage { flex: 1; min-width: 110px; text-align: center; padding: 10px 10px; border-left: 1px solid var(--border); }
-  .pipe-stage:first-child { border-left: none; }
-  .pipe-title { font-size: 0.82rem; font-weight: 700; color: var(--faint); }
-  .pipe-stage.ok .pipe-title, .pipe-stage.warn .pipe-title { color: var(--text); }
-  .pipe-desc { font-size: 0.7rem; color: var(--muted); margin: 2px 0 6px; line-height: 1.4; }
-  .pipe-status { font-size: 0.7rem; font-weight: 700; }
+  /* ---------- 폼 ---------- */
+  .file-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .file-row { grid-template-columns: 1fr; } }
+  input[type="file"] { color: var(--muted); font-size: 0.8rem; max-width: 100%; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.74rem; color: var(--muted); }
+  .field > span { font-weight: 600; }
+  .field input[type="number"] {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 0.83rem; font-family: var(--mono); max-width: 180px;
+  }
+  .file-meta { font-size: 0.72rem; color: var(--faint); font-family: var(--mono); min-height: 1.2em; line-height: 1.5; }
+
+  /* ---------- 결과 타일 ---------- */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+  .stat .v { font-size: 1.25rem; font-weight: 800; margin-top: 2px; font-family: var(--mono); }
+  .stat .v.ok { color: var(--ok); } .stat .v.warn { color: var(--warn); } .stat .v.err { color: var(--err); }
+
+  /* ---------- 파이프라인 ---------- */
+  .pipeline-track { display: flex; align-items: stretch; overflow-x: auto; padding: 4px 2px; gap: 6px; }
+  .pipe-stage {
+    flex: 1; min-width: 112px; text-align: center; padding: 12px 8px 10px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2);
+  }
+  .pipe-stage .n {
+    display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+    font-size: 0.72rem; font-weight: 800; margin-bottom: 6px; background: var(--border); color: var(--muted);
+  }
+  .pipe-stage.ok { border-color: var(--ok); } .pipe-stage.ok .n { background: var(--ok); color: #fff; }
+  .pipe-stage.warn { border-color: var(--warn); } .pipe-stage.warn .n { background: var(--warn); color: #fff; }
+  .pipe-stage.err { border-color: var(--err); } .pipe-stage.err .n { background: var(--err); color: #fff; }
+  .pipe-title { font-size: 0.8rem; font-weight: 700; color: var(--faint); margin-bottom: 4px; }
+  .pipe-stage.ok .pipe-title, .pipe-stage.warn .pipe-title, .pipe-stage.err .pipe-title { color: var(--text); }
+  .pipe-status { font-size: 0.72rem; font-weight: 700; }
   .pipe-stage.ok .pipe-status { color: var(--ok); }
   .pipe-stage.warn .pipe-status { color: var(--warn); }
+  .pipe-stage.err .pipe-status { color: var(--err); }
   .pipe-stage.idle .pipe-status { color: var(--faint); }
 
-  /* ---------- Tables ---------- */
-  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase;
-       letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
-  tr:last-child td { border-bottom: none; }
-  .table-empty { color: var(--faint); font-size: 0.82rem; padding: 20px 4px; text-align: center; }
+  /* ---------- 알람 목록 ---------- */
+  .alarm-list { display: flex; flex-direction: column; gap: 6px; }
+  .alarm { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--border); }
+  .alarm .lvl { flex-shrink: 0; width: 52px; text-align: center; font-size: 0.7rem; font-weight: 800; padding: 2px 0; border-radius: 6px; }
+  .alarm .lvl.ok { background: var(--ok-soft); color: var(--ok); }
+  .alarm .lvl.warn { background: var(--warn-soft); color: var(--warn); }
+  .alarm .lvl.err { background: var(--err-soft); color: var(--err); }
+  .alarm .lvl.info { background: var(--accent-soft); color: var(--accent); }
+  .alarm .msg { font-family: var(--mono); font-size: 0.76rem; line-height: 1.45; word-break: break-all; }
+  .alarm .ts { font-size: 0.7rem; color: var(--faint); margin-top: 1px; }
+  .empty { color: var(--faint); font-size: 0.82rem; padding: 10px 4px; }
 
   .result-box {
-    margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--panel-2);
-    border: 1px solid var(--border); font-family: var(--mono); font-size: 0.8rem;
+    margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--panel-2);
+    border: 1px solid var(--border); font-family: var(--mono); font-size: 0.78rem; color: var(--text);
     white-space: pre-wrap; word-break: break-word; display: none; max-height: 260px; overflow-y: auto;
   }
   .result-box.show { display: block; }
+  details > summary { cursor: pointer; font-size: 0.78rem; color: var(--muted); margin-top: 10px; user-select: none; }
+  details.card > summary { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text); }
+  details.card[open] > summary { margin-bottom: 12px; }
 
-  code { font-family: var(--mono); background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+  code { font-family: var(--mono); background: var(--panel-2); border: 1px solid var(--border); padding: 0 5px; border-radius: 4px; font-size: 0.9em; }
   footer { color: var(--faint); font-size: 0.76rem; text-align: center; margin: 26px 0 10px; }
 </style>
 </head>
@@ -113,124 +186,163 @@
 
 <div class="topnav">
   <div class="brand">
-    <div class="brand-mark">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2-7 4 14 3-10 2 3h5" stroke="#0a0c10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </div>
+    <div class="brand-mark">MW</div>
     <div class="brand-text">
-      <div class="title">AIOps · HAIC</div>
-      <div class="subtitle">드리프트 감지 기반 재학습 파이프라인</div>
+      <div class="title">MoldWeight · 사출성형 중량 가상계측</div>
+      <div class="subtitle">드리프트 감지 → 재학습 → 게이트 → 배포</div>
     </div>
   </div>
   <div class="nav-right">
-    <span class="pill neutral">MODEL_SOURCE=mlflow 기준</span>
+    <span class="pill neutral" id="health-badge"><span class="dot"></span>서버 확인 중…</span>
+    <span class="pill accent big" id="version-badge"><span class="dot"></span>서빙 모델 v-</span>
+    <button class="btn secondary small" onclick="refreshServing()">확인</button>
+    <button class="btn secondary small" id="theme-btn" onclick="toggleTheme()" title="라이트/다크 전환">다크</button>
   </div>
 </div>
 
 <div class="page">
 
-  <!-- ================= 데이터 업로드 ================= -->
+  <!-- ================= 1. 시뮬레이션 ================= -->
   <div class="card">
     <div class="section-head">
-      <h2>HAIC 데이터 업로드</h2>
-      <p>
-        <code>data/uploads/</code>는 여기서 업로드한 CSV만 쌓이는 곳입니다. 학습(<code>train_and_register.py</code> 등)은
-        항상 가장 최근에 올라온 파일을 사용합니다. <code>data/sample_haic_prices.csv</code>를 예시로 올려보세요
-        (컬럼: Date, Close, Volume · 최소 41행).
-      </p>
+      <h2><span class="step">1</span>생산 라인 시뮬레이션</h2>
+      <p>샷 21개를 한 배치로 서버에 보내 무게를 예측하고, 실측과의 오차(RMSE)로 드리프트를 판정합니다.</p>
     </div>
-    <div class="upload-row">
-      <input type="file" id="upload-input" accept=".csv" />
-      <button class="btn primary" onclick="uploadFile()">업로드</button>
+    <div class="file-row">
+      <label class="field">
+        <span>정상 샷 파일 · data/sample_moldweight.csv</span>
+        <input type="file" id="normal-file" accept=".csv" onchange="loadShotFile('normal', this)" />
+        <div class="file-meta" id="normal-meta"></div>
+      </label>
+      <label class="field">
+        <span>공정 변경 샷 파일 · data/drift_shots_23.csv</span>
+        <input type="file" id="drift-file" accept=".csv" onchange="loadShotFile('drift', this)" />
+        <div class="file-meta" id="drift-meta"></div>
+      </label>
     </div>
-    <div id="upload-status" style="margin-top:10px;"></div>
-  </div>
 
-  <!-- ================= 드리프트 시뮬레이션 ================= -->
-  <div class="card">
-    <div class="section-head">
-      <h2>드리프트 시뮬레이션</h2>
-      <p>
-        일별 수익률(log return) 기반 랜덤워크로 정상/드리프트 배치를 만들어 <code>/predict/batch-test</code>로 전송합니다.
-        드리프트 배치를 보내면 아래 파이프라인이 감지 → 재학습 → (게이트 통과 시) 재배포까지 진행됩니다.
-      </p>
+    <div class="scenario-row">
+      <button class="scenario normal" id="btn-normal" onclick="sendBatch('normal')" disabled>
+        <span class="t"><span class="tag">정상</span>정상 생산 샷 21개 보내기</span>
+        <span class="d">학습 때와 같은 공정 조건 · 기대 결과: 정상</span>
+        <span class="p" id="normal-progress">파일을 먼저 선택하세요</span>
+      </button>
+      <button class="scenario drift" id="btn-drift" onclick="sendBatch('drift')" disabled>
+        <span class="t"><span class="tag">공정 변경</span>금형온도 70°C로 바뀐 샷 21개 보내기</span>
+        <span class="d">기대 결과: 드리프트 감지 → 재학습 → 게이트 판정</span>
+        <span class="p" id="drift-progress">파일을 먼저 선택하세요</span>
+      </button>
     </div>
-    <div class="btn-row">
-      <button class="btn primary" onclick="sendBatch('normal')">정상 배치 전송</button>
-      <button class="btn danger" onclick="sendBatch('drift')">드리프트 배치 전송</button>
-    </div>
+
     <div id="drift-status" style="margin-top:14px;"></div>
-    <div id="drift-result" class="result-box"></div>
+    <div class="stat-row" id="stat-row" style="display:none;">
+      <div class="stat"><div class="k">이 배치 RMSE</div><div class="v" id="stat-batch">-</div></div>
+      <div class="stat"><div class="k">판정 RMSE · 임계 0.3 g</div><div class="v" id="stat-window">-</div></div>
+      <div class="stat"><div class="k">재학습 샷 · 41개 필요</div><div class="v" id="stat-shots">-</div></div>
+      <div class="stat"><div class="k">서빙 모델 버전</div><div class="v" id="stat-version">-</div></div>
+    </div>
+
+    <details>
+      <summary>다른 구간 보내기 · 응답 JSON</summary>
+      <div class="btn-row" style="margin-top:8px; align-items:flex-end;">
+        <label class="field">
+          <span>공정 변경 파일의 시작 샷 (cycle_counter)</span>
+          <input type="number" id="drift-start" placeholder="21122" onchange="resetCursor()" />
+        </label>
+        <button class="btn secondary small" onclick="resetCursor()">처음 샷으로 되돌리기</button>
+        <span class="file-meta" id="cursor-meta"></span>
+      </div>
+      <div id="drift-result" class="result-box"></div>
+    </details>
   </div>
 
-  <!-- ================= 파이프라인 ================= -->
+  <!-- ================= 2. 파이프라인 ================= -->
   <div class="card">
     <div class="section-head-row">
       <div class="section-head">
-        <h2>드리프트 감지 기반 재학습 파이프라인</h2>
-        <p>위에서 배치를 보내면, 그 요청이 실제로 거쳐간 단계를 아래에 표시합니다 (자동 스케줄러는 없고, 수동 트리거 방식입니다).</p>
+        <h2><span class="step">2</span>재학습 파이프라인</h2>
       </div>
-      <div class="pipeline-meta">
-        <span class="pill neutral" id="pipeline-run-badge">아직 실행 안 함</span>
-      </div>
+      <span class="pill neutral" id="pipeline-run-badge">아직 실행 안 함</span>
     </div>
     <div class="pipeline-track" id="pipeline-track"></div>
   </div>
 
-  <!-- ================= 재학습 로그 ================= -->
+  <!-- ================= 3. 알람 + 로그 ================= -->
   <div class="card">
     <div class="section-head-row">
       <div class="section-head">
-        <h2>재학습 로그</h2>
-        <p>
-          드리프트 감지·재학습 트리거는 <code>logs/aiops.log</code>에 그대로 기록됩니다.
-          <code>[WARN] drift detected</code> → <code>[INFO] retrain triggered</code> →
-          <code>[OK] new_rmse=... promoted</code> 순서로 남는지 아래에서 직접 열어 확인하세요.
-        </p>
+        <h2><span class="step">3</span>운영 알람 <span class="pill neutral" style="font-weight:600;">logs/aiops.log</span></h2>
       </div>
+      <button class="btn secondary small" onclick="loadAlarms()">새로고침</button>
     </div>
-    <div class="btn-row" id="log-file-list"></div>
-    <div id="log-content" class="result-box"></div>
+    <div class="alarm-list" id="alarm-list"><div class="empty">아직 알람이 없습니다</div></div>
+    <details>
+      <summary>로그 원문 보기</summary>
+      <div class="btn-row" id="log-file-list"></div>
+      <div id="log-content" class="result-box"></div>
+    </details>
   </div>
+
+  <!-- ================= 4. 업로드 (접힘) ================= -->
+  <details class="card">
+    <summary>학습용 샷 데이터 업로드 (data/uploads/)</summary>
+    <p style="margin:0 0 10px; color:var(--muted); font-size:0.8rem;">
+      학습 스크립트(<code>train_and_register.py</code>)가 쓰는 CSV입니다. 컬럼 cycle_counter, weight, inj_000~127, cav_000~127 · 최소 41행.
+    </p>
+    <div class="btn-row" style="margin-top:0;">
+      <input type="file" id="upload-input" accept=".csv" />
+      <button class="btn primary small" onclick="uploadFile()">업로드</button>
+    </div>
+    <div id="upload-status" style="margin-top:10px;"></div>
+  </details>
 
 </div>
 
-<footer>HAIC AIOps 실습 · 드리프트 감지 → 재학습 파이프라인 (serving_app/static/index.html)</footer>
+<footer>MoldWeight AIOps · serving_app/static/index.html</footer>
 
 <script>
 /* ===================== 전역 상태 ===================== */
-// 서버(data/features.py, monitoring/drift_detector.py)와 동일한 값 (상수만 복제)
-const SEQ_LEN = 20;
+// serving_app/config.py와 같은 값 (대시보드는 파이썬을 읽지 못하므로 상수만 복제)
+const CURVE_LEN = 128;
+const N_CHANNELS = 2;
 const WINDOW_SIZE = 21;
-const RMSE_THRESHOLD = 4.0;
+const RETRAIN_SHOTS = 41;
+const DRIFT_THRESHOLD = 0.3;
+// 공정 변경 파일(실험 23)에서 금형온도 70°C 구간이 시작되는 샷. 그 앞 구간(80·90°C)은
+// 현재 모델로도 RMSE 0.3 이내라 드리프트가 나지 않으므로 시연은 여기서 시작한다.
+const DRIFT_START_DEFAULT = 21122;
 
-let lastPipelineRun = null; // { driftCheck, clientRmse, ts }
+const shotFiles = { normal: null, drift: null }; // { name, shots: [{cycle_counter, curve, actual_weight}] }
+let driftCursor = 0;        // 드리프트 파일에서 다음에 보낼 샷의 인덱스
+let sentShots = 0;          // 이 화면에서 보낸 샷 수 (재학습 샷 41개가 모였는지 표시용)
+let servingVersion = null;  // /predict 응답의 model_version (실제 서빙 중인 버전)
+let lastPipelineRun = null; // { driftCheck, clientRmse, ts, versionBefore, versionAfter }
 
-const NORMAL_SIGMA = 0.012;
-const DRIFT_SIGMA = NORMAL_SIGMA * 3;
-const DEFAULT_BASE_PRICE = 165.0;
-const PIPELINE_STAGES = [
-  { key: "collect", title: "데이터 수집", desc: "요청 수신" },
-  { key: "monitor", title: "데이터 모니터링", desc: "예측 기록 누적" },
-  { key: "detect", title: "드리프트 감지", desc: "RMSE vs 임계치" },
-  { key: "trigger", title: "재학습 트리거", desc: "조건 충족 시 시작" },
-  { key: "train", title: "모델 학습", desc: "fine-tuning" },
-  { key: "register", title: "모델 등록", desc: "MLflow Registry" },
-  { key: "deploy", title: "배포", desc: "Production 승격" },
-];
+const PIPELINE_STAGES = ["데이터 수집", "모니터링", "드리프트 감지", "재학습 트리거", "모델 학습", "게이트·등록", "배포"];
+const ZERO_CURVE = Array.from({ length: CURVE_LEN }, () => [0, 0]); // 서빙 버전 확인용 (값 범위 안의 유효한 곡선)
+
+/* ===================== 테마 ===================== */
+function isDark() {
+  const t = document.documentElement.getAttribute("data-theme");
+  return t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme) root.setAttribute("data-theme", theme); else root.removeAttribute("data-theme");
+  document.getElementById("theme-btn").textContent = isDark() ? "라이트" : "다크";
+}
+function toggleTheme() {
+  const next = isDark() ? "light" : "dark";
+  applyTheme(next);
+  try { localStorage.setItem("mw-theme", next); } catch (e) { /* 저장 불가 환경이면 이번 세션만 적용 */ }
+}
+function initTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem("mw-theme"); } catch (e) { /* 무시 */ }
+  applyTheme(saved === "dark" || saved === "light" ? saved : null);
+}
 
 /* ===================== 유틸 ===================== */
-function randn() {
-  let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
-  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-}
-function randomWalk(n, base, sigma) {
-  const prices = [];
-  let logPrice = Math.log(base);
-  for (let i = 0; i < n; i++) { logPrice += randn() * sigma; prices.push(Math.exp(logPrice)); }
-  return prices;
-}
 function rmseOf(actual, predicted) {
   const n = Math.min(actual.length, predicted.length);
   if (n === 0) return null;
@@ -238,22 +350,21 @@ function rmseOf(actual, predicted) {
   for (let i = 0; i < n; i++) sum += (actual[i] - predicted[i]) ** 2;
   return Math.sqrt(sum / n);
 }
+function fmt(x, digits = 3) { return typeof x === "number" ? x.toFixed(digits) : "-"; }
 function relTime(ts) {
   if (!ts) return "-";
   const diff = Math.max(0, Date.now() / 1000 - ts);
   if (diff < 60) return `${Math.floor(diff)}초 전`;
   if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
+  return `${Math.floor(diff / 3600)}시간 전`;
 }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 async function getJSON(path) {
   const res = await fetch(path);
   const data = await res.json().catch(() => null);
   return { ok: res.ok, status: res.status, data };
 }
-// 서버가 500 등을 일반 텍스트("Internal Server Error")로 응답할 수도 있어
-// (예: model_loader.py의 _load_from_mlflow TODO가 아직 NotImplementedError를 던지는 경우),
-// res.json()을 바로 쓰지 않고 텍스트로 먼저 받아 파싱을 시도한다.
+// 서버가 500 등을 일반 텍스트로 응답할 수도 있어 텍스트로 먼저 받아 파싱을 시도한다.
 async function safeJson(res) {
   const text = await res.text();
   try { return JSON.parse(text); } catch (e) { return { __raw: text || "(응답 없음)" }; }
@@ -263,41 +374,166 @@ function showResult(el, obj, isError = false) {
   el.style.borderColor = isError ? "var(--err)" : "var(--border)";
   el.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
+function pill(level, text, big = false) { return `<span class="pill ${level}${big ? " big" : ""}"><span class="dot"></span>${text}</span>`; }
+
+/* ===================== 서빙 상태 (health, 실제 서빙 버전) ===================== */
+async function refreshServing() {
+  const healthEl = document.getElementById("health-badge");
+  const versionEl = document.getElementById("version-badge");
+  try {
+    const { ok, data } = await getJSON("/health");
+    if (!ok || !data) throw new Error("health 실패");
+    healthEl.className = `pill ${data.model_loaded ? "ok" : "warn"}`;
+    healthEl.innerHTML = `<span class="dot"></span>${data.status} · model_loaded=${data.model_loaded} · ${data.loading_mode}`;
+  } catch (e) {
+    healthEl.className = "pill err";
+    healthEl.innerHTML = `<span class="dot"></span>서버 연결 실패`;
+  }
+  // drift_check.model_version은 Registry 기준이라, 실제 서빙 중인 버전은 /predict 응답으로 확인한다.
+  const v = await fetchServingVersion();
+  versionEl.innerHTML = `<span class="dot"></span>서빙 모델 v${v ?? "?"}`;
+  return v;
+}
+async function fetchServingVersion() {
+  const sample = shotFiles.drift?.shots[0] || shotFiles.normal?.shots[0];
+  const curve = sample ? sample.curve : ZERO_CURVE;
+  try {
+    const res = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ curve }) });
+    const data = await safeJson(res);
+    if (!res.ok) return null;
+    servingVersion = data.model_version;
+    return servingVersion;
+  } catch (e) { return null; }
+}
 
 /* ===================== 데이터 업로드 ===================== */
 async function uploadFile() {
   const input = document.getElementById("upload-input");
   const statusEl = document.getElementById("upload-status");
-  if (!input.files.length) {
-    statusEl.innerHTML = `<span class="pill warn"><span class="dot"></span>파일을 먼저 선택하세요</span>`;
-    return;
-  }
+  if (!input.files.length) { statusEl.innerHTML = pill("warn", "파일을 먼저 선택하세요"); return; }
   const form = new FormData();
   form.append("file", input.files[0]);
-  statusEl.innerHTML = `<span class="pill neutral"><span class="dot"></span>업로드 중…</span>`;
+  statusEl.innerHTML = pill("neutral", "업로드 중…");
   try {
     const res = await fetch("/data/upload", { method: "POST", body: form });
     const data = await safeJson(res);
-    if (!res.ok) {
-      statusEl.innerHTML = `<span class="pill err"><span class="dot"></span>${data.detail || "업로드 실패"}</span>`;
-      return;
-    }
-    statusEl.innerHTML = `<span class="pill ok"><span class="dot"></span>업로드 완료: ${data.filename} (${data.rows}행)</span>`;
+    if (!res.ok) { statusEl.innerHTML = pill("err", escapeHtml(data.detail || "업로드 실패")); return; }
+    const { data: st } = await getJSON("/data/status");
+    const summary = st && st.exists ? ` · 샷 ${st.first_cycle}~${st.last_cycle} · 무게 ${fmt(st.weight_min)}~${fmt(st.weight_max)} g` : "";
+    statusEl.innerHTML = pill("ok", `업로드 완료: ${escapeHtml(data.filename)} (${data.rows}행)${summary}`);
   } catch (e) {
-    statusEl.innerHTML = `<span class="pill err"><span class="dot"></span>요청 실패: ${e.message}</span>`;
+    statusEl.innerHTML = pill("err", `요청 실패: ${escapeHtml(e.message)}`);
   }
 }
 
-/* ===================== 재학습 로그 ===================== */
+/* ===================== 샷 CSV 읽기 (브라우저) ===================== */
+function parseShotCsv(text) {
+  // 한 행 = 샷 하나. 컬럼 cycle_counter, weight, inj_000~inj_127, cav_000~cav_127 (experiment는 선택).
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim().length);
+  if (lines.length < 2) throw new Error("CSV에 샷이 없습니다");
+  const header = lines[0].split(",").map((h) => h.trim());
+  const col = (name) => {
+    const i = header.indexOf(name);
+    if (i < 0) throw new Error(`필수 컬럼이 없습니다: ${name}`);
+    return i;
+  };
+  const cycleIdx = col("cycle_counter"), weightIdx = col("weight");
+  const injIdx = Array.from({ length: CURVE_LEN }, (_, i) => col(`inj_${String(i).padStart(3, "0")}`));
+  const cavIdx = Array.from({ length: CURVE_LEN }, (_, i) => col(`cav_${String(i).padStart(3, "0")}`));
+  const shots = lines.slice(1).map((line, n) => {
+    const v = line.split(",");
+    const curve = injIdx.map((ii, k) => [parseFloat(v[ii]), parseFloat(v[cavIdx[k]])]);
+    if (curve.some((p) => p.length !== N_CHANNELS || p.some((x) => !Number.isFinite(x)))) {
+      throw new Error(`${n + 2}행: 곡선 값이 숫자가 아닙니다`);
+    }
+    return { cycle_counter: parseInt(v[cycleIdx], 10), curve, actual_weight: parseFloat(v[weightIdx]) };
+  });
+  shots.sort((a, b) => a.cycle_counter - b.cycle_counter);
+  return shots;
+}
+function loadShotFile(kind, input) {
+  const metaEl = document.getElementById(`${kind}-meta`);
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const shots = parseShotCsv(reader.result);
+      shotFiles[kind] = { name: file.name, shots };
+      metaEl.textContent = `${shots.length}샷 · ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
+      resetCursor();
+    } catch (e) {
+      shotFiles[kind] = null;
+      metaEl.textContent = `읽기 실패: ${e.message}`;
+      resetCursor();
+    }
+  };
+  reader.readAsText(file);
+}
+// 한 배치 = 판정 윈도우(WINDOW_SIZE). 배치 하나를 보내면 드리프트 판정이 정확히 한 번 돌아간다.
+function batchSize() { return WINDOW_SIZE; }
+function driftStart() {
+  const v = parseInt(document.getElementById("drift-start").value, 10);
+  return Number.isFinite(v) ? v : DRIFT_START_DEFAULT;
+}
+function resetCursor() {
+  const drift = shotFiles.drift;
+  driftCursor = 0;
+  if (drift) {
+    const idx = drift.shots.findIndex((s) => s.cycle_counter >= driftStart());
+    driftCursor = idx < 0 ? drift.shots.length : idx;
+  }
+  updateProgress();
+}
+function updateProgress() {
+  const n = batchSize();
+  const normal = shotFiles.normal, drift = shotFiles.drift;
+  const btnN = document.getElementById("btn-normal"), btnD = document.getElementById("btn-drift");
+  btnN.disabled = !normal;
+  btnD.disabled = !drift || driftCursor >= drift.shots.length;
+  document.getElementById("normal-progress").textContent = normal
+    ? `보낼 샷: ${normal.shots[normal.shots.length - n].cycle_counter}~${normal.shots[normal.shots.length - 1].cycle_counter} (파일 마지막 ${n}개)`
+    : "파일을 먼저 선택하세요";
+  const cursorEl = document.getElementById("cursor-meta");
+  if (!drift) { document.getElementById("drift-progress").textContent = "파일을 먼저 선택하세요"; cursorEl.textContent = ""; return; }
+  const next = drift.shots.slice(driftCursor, driftCursor + n);
+  const startIdx = drift.shots.findIndex((s) => s.cycle_counter >= driftStart());
+  const total = Math.ceil((drift.shots.length - Math.max(startIdx, 0)) / n);
+  const done = Math.round((driftCursor - Math.max(startIdx, 0)) / n);
+  const text = next.length
+    ? `다음: 샷 ${next[0].cycle_counter}~${next[next.length - 1].cycle_counter} (${done + 1}/${total} 배치)`
+    : "파일 끝까지 보냈습니다 · 아래 '처음 샷으로 되돌리기'";
+  document.getElementById("drift-progress").textContent = text;
+  cursorEl.textContent = `시작 샷 ${driftStart()} · ${text}`;
+}
+
+/* ===================== 알람 목록 + 로그 원문 ===================== */
+const LOG_LINE = /^(\S+ \S+) \[(\w+)\] (\[(WARN|INFO|OK|FAIL)\] .*)$/; // "시각 [레벨] [태그] 메시지"
+async function loadAlarms() {
+  const list = document.getElementById("alarm-list");
+  const { ok, data } = await getJSON("/logs");
+  const file = ok && Array.isArray(data) ? data.find((f) => f.name === "aiops.log") : null;
+  if (!file) { list.innerHTML = `<div class="empty">아직 알람이 없습니다</div>`; return; }
+  const { ok: ok2, data: log } = await getJSON(`/logs/${encodeURIComponent(file.name)}`);
+  const lines = ok2 && log && log.content ? log.content.split(/\r?\n/).filter((l) => l.trim()) : [];
+  const items = lines.map((l) => {
+    const m = l.match(LOG_LINE);
+    return m ? { ts: m[1], tag: m[4], msg: m[3] } : { ts: "", tag: "INFO", msg: l };
+  }).reverse().slice(0, 6);
+  if (!items.length) { list.innerHTML = `<div class="empty">아직 알람이 없습니다</div>`; return; }
+  const cls = { WARN: "warn", FAIL: "err", OK: "ok", INFO: "info" };
+  list.innerHTML = items.map((it) => `
+    <div class="alarm">
+      <span class="lvl ${cls[it.tag] || "info"}">${it.tag}</span>
+      <div><div class="msg">${escapeHtml(it.msg)}</div><div class="ts">${escapeHtml(it.ts)}</div></div>
+    </div>`).join("");
+}
 async function loadLogFiles() {
   const { ok, data } = await getJSON("/logs");
   const wrap = document.getElementById("log-file-list");
-  if (!ok || !data || !data.length) {
-    wrap.innerHTML = `<span class="pill neutral">아직 로그가 없습니다 - 드리프트 배치를 보내면 logs/aiops.log가 생깁니다</span>`;
-    return;
-  }
+  if (!ok || !data || !data.length) { wrap.innerHTML = pill("neutral", "아직 로그 파일이 없습니다"); return; }
   wrap.innerHTML = data.map((f) =>
-    `<button class="btn secondary" onclick="openLogFile('${f.name}')">${f.name} (${f.size}B)</button>`
+    `<button class="btn secondary small" onclick="openLogFile('${escapeHtml(f.name)}')">${escapeHtml(f.name)} (${f.size}B)</button>`
   ).join("");
 }
 async function openLogFile(name) {
@@ -308,98 +544,154 @@ async function openLogFile(name) {
 }
 
 /* ===================== 파이프라인 시각화 ===================== */
+// drift_check를 7단계 상태로 바꾼다. status는 collecting | ok | retrain_triggered 세 가지인데,
+// collecting에 rmse가 실려 있으면 "드리프트는 감지됐지만 재학습 샷(41개)이 부족해 보류"된 상태다.
+function classify(check) {
+  const { status, rmse, promoted } = check;
+  if (status === "retrain_triggered") return promoted ? "promoted" : "gate_failed";
+  if (status === "ok") return "ok";
+  if (status === "collecting") return typeof rmse === "number" && rmse > DRIFT_THRESHOLD ? "drift_waiting" : "collecting";
+  return "unknown";
+}
 function renderPipeline() {
   const track = document.getElementById("pipeline-track");
   const badge = document.getElementById("pipeline-run-badge");
-
   if (!lastPipelineRun) {
     badge.className = "pill neutral"; badge.textContent = "아직 실행 안 함";
-    track.innerHTML = PIPELINE_STAGES.map((s, i) => stageHtml(s, i, "idle", "대기 중")).join("");
+    track.innerHTML = PIPELINE_STAGES.map((t, i) => stageHtml(t, i, "idle", "대기")).join("");
     return;
   }
-
   const { driftCheck, ts } = lastPipelineRun;
   badge.className = "pill neutral";
   badge.textContent = `마지막 실행 ${relTime(ts)}`;
 
-  const serverStatus = driftCheck.status; // "ok" | "retrain_triggered"
-  const promoted = driftCheck.promoted;
-
-  let states; // 7개 단계 상태: idle | ok | warn
-  if (serverStatus === "retrain_triggered" && promoted === true) {
-    states = ["ok", "ok", "warn", "ok", "ok", "ok", "ok"];
-  } else if (serverStatus === "retrain_triggered" && promoted === false) {
-    states = ["ok", "ok", "warn", "ok", "ok", "warn", "idle"];
-  } else if (serverStatus === "retrain_triggered") {
-    states = ["ok", "ok", "warn", "idle", "idle", "idle", "idle"];
-  } else {
-    states = ["ok", "ok", "ok", "idle", "idle", "idle", "idle"];
-  }
-  const statusText = { ok: "완료", warn: "감지됨", idle: "대기 중" };
-
-  track.innerHTML = PIPELINE_STAGES.map((s, i) => stageHtml(s, i, states[i], statusText[states[i]])).join("");
+  const kind = classify(driftCheck);
+  const states = {
+    collecting:    ["ok", "warn", "idle", "idle", "idle", "idle", "idle"],
+    ok:            ["ok", "ok", "ok", "idle", "idle", "idle", "idle"],
+    drift_waiting: ["ok", "ok", "warn", "warn", "idle", "idle", "idle"],
+    gate_failed:   ["ok", "ok", "warn", "ok", "ok", "err", "idle"],
+    promoted:      ["ok", "ok", "warn", "ok", "ok", "ok", "ok"],
+    unknown:       ["ok", "idle", "idle", "idle", "idle", "idle", "idle"],
+  }[kind];
+  const labels = {
+    collecting:    [null, `${driftCheck.window}/${WINDOW_SIZE} 수집`, null, null, null, null, null],
+    ok:            [null, null, "정상", null, null, null, null],
+    drift_waiting: [null, null, "감지", `샷 ${Math.min(sentShots, RETRAIN_SHOTS)}/${RETRAIN_SHOTS}`, null, null, null],
+    gate_failed:   [null, null, "감지", null, null, "게이트 실패", `v${driftCheck.model_version} 유지`],
+    promoted:      [null, null, "감지", null, null, "게이트 통과", `v${driftCheck.model_version} 승격`],
+    unknown:       [null, null, null, null, null, null, null],
+  }[kind];
+  const defaultText = { ok: "완료", warn: "감지", err: "실패", idle: "대기" };
+  track.innerHTML = PIPELINE_STAGES.map((t, i) => stageHtml(t, i, states[i], labels[i] || defaultText[states[i]])).join("");
 }
-function stageHtml(stage, idx, state, statusLabel) {
+function stageHtml(title, idx, state, statusLabel) {
   return `
     <div class="pipe-stage ${state}">
-      <div class="pipe-title">${stage.title}</div>
-      <div class="pipe-desc">${stage.desc}</div>
+      <div class="n">${idx + 1}</div>
+      <div class="pipe-title">${title}</div>
       <div class="pipe-status">${statusLabel}</div>
     </div>`;
 }
 
-/* ===================== 드리프트 배치 전송 ===================== */
+/* ===================== 결과 타일 ===================== */
+function renderStats(check, clientRmse, versionBefore, versionAfter) {
+  document.getElementById("stat-row").style.display = "";
+  const windowRmse = typeof check.rmse === "number" ? check.rmse : null;
+  const b = document.getElementById("stat-batch");
+  b.textContent = `${fmt(clientRmse)} g`;
+  b.className = `v ${clientRmse != null && clientRmse > DRIFT_THRESHOLD ? "warn" : "ok"}`;
+  const w = document.getElementById("stat-window");
+  w.textContent = windowRmse == null ? `${check.window}/${WINDOW_SIZE} 수집` : `${fmt(windowRmse)} g`;
+  w.className = `v ${windowRmse == null ? "" : windowRmse > DRIFT_THRESHOLD ? "warn" : "ok"}`;
+  const s = document.getElementById("stat-shots");
+  const n = Math.min(sentShots, RETRAIN_SHOTS);
+  s.textContent = `${n} / ${RETRAIN_SHOTS}`;
+  s.className = `v ${n >= RETRAIN_SHOTS ? "ok" : ""}`;
+  const v = document.getElementById("stat-version");
+  if (check.status === "retrain_triggered") {
+    v.textContent = `v${versionBefore ?? "?"} → v${versionAfter ?? "?"}`;
+    v.className = `v ${versionAfter !== versionBefore ? "ok" : "warn"}`;
+  } else {
+    v.textContent = `v${servingVersion ?? "?"}`;
+    v.className = "v";
+  }
+}
+
+/* ===================== 배치 전송 ===================== */
+function nextBatch(kind) {
+  const n = batchSize();
+  if (kind === "normal") return shotFiles.normal.shots.slice(-n); // 정상 파일의 마지막 n샷 (학습에 쓰이지 않은 검증 구간)
+  const batch = shotFiles.drift.shots.slice(driftCursor, driftCursor + n);
+  driftCursor += batch.length;
+  return batch;
+}
+function describe(check) {
+  const r = fmt(check.rmse);
+  switch (classify(check)) {
+    case "ok":            return ["ok", `정상 · 오차 ${r} g ≤ 0.3`];
+    case "collecting":    return ["neutral", `판정 대기 · 샷 ${check.window}/${WINDOW_SIZE} 수집 중`];
+    case "drift_waiting": return ["warn", `드리프트 감지 (오차 ${r} g) · 재학습 샷 부족 ${Math.min(sentShots, RETRAIN_SHOTS)}/${RETRAIN_SHOTS} → 한 번 더 보내세요`];
+    case "gate_failed":   return ["warn", `드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 실패 → v${check.model_version} 유지`];
+    case "promoted":      return ["ok", `드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 통과 → v${check.model_version} 배포`];
+    default:              return ["err", `알 수 없는 status: ${escapeHtml(check.status)}`];
+  }
+}
 async function sendBatch(kind) {
   const statusEl = document.getElementById("drift-status");
   const resultBox = document.getElementById("drift-result");
-  const n = SEQ_LEN + WINDOW_SIZE;
-  const sigma = kind === "drift" ? DRIFT_SIGMA : NORMAL_SIGMA;
-  const prices = randomWalk(n, DEFAULT_BASE_PRICE, sigma);
+  const btnN = document.getElementById("btn-normal"), btnD = document.getElementById("btn-drift");
+  if (!shotFiles[kind]) return;
+  const shots = nextBatch(kind);
+  if (!shots.length) { statusEl.innerHTML = pill("warn", "보낼 샷이 없습니다 · 아래 '처음 샷으로 되돌리기'"); return; }
+  updateProgress();
+  const label = kind === "normal" ? "정상" : "공정 변경";
+  const range = `샷 ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
+  const versionBefore = servingVersion;
 
-  statusEl.innerHTML = `<span class="pill warn"><span class="dot"></span>전송 중… (fine-tuning이 걸리면 수십 초 걸릴 수 있습니다)</span>`;
-
+  btnN.disabled = btnD.disabled = true;
+  statusEl.innerHTML = pill("warn", `${label} ${range} 전송 중… (재학습이 돌면 몇 초 걸립니다)`, true);
   try {
-    const res = await fetch("/predict/batch-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prices }) });
+    const res = await fetch("/predict/batch-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shots }) });
     const data = await safeJson(res);
     if (!res.ok) {
-      const reason = data.__raw
-        ? "서버 오류 - model_loader.py 또는 predict.py의 TODO가 아직 구현되지 않았을 수 있습니다"
-        : "오류 (TODO 미구현일 수 있음)";
-      statusEl.innerHTML = `<span class="pill err"><span class="dot"></span>${reason}</span>`;
+      statusEl.innerHTML = pill("err", `${data.__raw ? "서버 오류" : "요청 거부"} (HTTP ${res.status})`, true);
       showResult(resultBox, { status: res.status, detail: data }, true);
       return;
     }
-    const actual = [];
-    for (let i = 0; i < prices.length - SEQ_LEN; i++) actual.push(prices[i + SEQ_LEN]);
-    const clientRmse = rmseOf(actual, data.predictions || []);
+    sentShots += shots.length;
+    const clientRmse = rmseOf(shots.map((s) => s.actual_weight), data.predictions || []);
+    const check = data.drift_check || {};
 
-    lastPipelineRun = { driftCheck: data.drift_check || {}, clientRmse, ts: Date.now() / 1000 };
+    // 재학습이 돌았으면 /predict로 실제 서빙 버전이 바뀌었는지 확인한다 (Registry 버전과 별개).
+    let versionAfter = versionBefore;
+    if (check.status === "retrain_triggered") versionAfter = await refreshServing();
+
+    lastPipelineRun = { driftCheck: check, clientRmse, ts: Date.now() / 1000, versionBefore, versionAfter };
     renderPipeline();
+    renderStats(check, clientRmse, versionBefore, versionAfter);
+    loadAlarms();
     loadLogFiles();
 
-    const check = data.drift_check || {};
-    let level = "ok", label = "정상 (드리프트 없음)";
-    if (check.status === "retrain_triggered" && check.promoted) {
-      level = "ok"; label = `재학습 완료 · 새 버전 승격 (rmse=${check.rmse?.toFixed?.(2) ?? check.rmse})`;
-    } else if (check.status === "retrain_triggered" && check.promoted === false) {
-      level = "warn"; label = `드리프트 감지 · 재학습했지만 게이트 미통과 (rmse=${check.rmse?.toFixed?.(2) ?? check.rmse})`;
-    } else if (check.status === "retrain_triggered") {
-      level = "warn"; label = "드리프트 감지 · 재학습 트리거됨";
-    }
-    statusEl.innerHTML = `
-      <span class="pill ${level}"><span class="dot"></span>${label}</span>
-      <span class="pill neutral" style="margin-left:6px;">클라이언트 계산 RMSE: $${clientRmse != null ? clientRmse.toFixed(2) : "-"}</span>`;
+    const [level, text] = describe(check);
+    statusEl.innerHTML = pill(level, `${label} ${range}: ${text}`, true);
     showResult(resultBox, data, false);
   } catch (e) {
-    statusEl.innerHTML = `<span class="pill err"><span class="dot"></span>연결 실패</span>`;
+    statusEl.innerHTML = pill("err", "연결 실패", true);
     showResult(resultBox, "요청 실패: " + e.message, true);
+  } finally {
+    updateProgress();
   }
 }
 
 /* ===================== 초기화 ===================== */
 async function init() {
+  initTheme();
   renderPipeline();
+  loadAlarms();
   loadLogFiles();
+  updateProgress();
+  refreshServing();
 }
 init();
 </script>
