@@ -111,12 +111,23 @@ def get_model() -> LoadedModel:
 
 def reload() -> None:
     """
-    캐시를 비워 다음 요청이 모델을 다시 로드하게 합니다.
+    재학습으로 Production 버전이 바뀐 뒤, 캐시에 남은 옛 모델이 계속 서빙되지 않도록
+    교체합니다. 재학습이 끝난 뒤 C가 호출합니다 (RULES 5장: recent_predictions를 비울 때 함께).
 
-    재학습으로 Production 버전이 바뀌어도 캐시에 남은 옛 모델이 계속 서빙되는 것을
-    막습니다. 재학습이 끝난 뒤 C가 호출합니다 (RULES 5장: recent_predictions를 비울 때
-    함께). 여기서 바로 새 모델을 로드하지 않는 이유는, 재학습 직후 응답 경로를 막지 않고
-    다음 요청에서 lazy하게 올리는 편이 지연을 한 곳에만 몰아주기 때문입니다.
+    교체 방식은 LOADING_MODE를 따릅니다. 로딩 비용을 "언제, 누가" 치를지가 이 환경변수로
+    선언된 운영 방침이고, 재학습은 그 방침에서 예외가 아니기 때문입니다.
+
+    - eager: 여기서 즉시 새 모델을 올립니다. eager를 켠 이유가 "사용자는 로딩 비용을 내지
+      않는다"인데, 캐시만 비우면 그 보장이 재학습마다 깨집니다. 게다가 재학습은 드리프트가
+      감지된 시점 - 예측이 가장 중요한 때 - 에 일어납니다.
+      또 /health의 model_loaded가 false로 떨어지는 구간이 사라집니다. 그 구간이 있으면
+      scripts/smoke_test.sh(model_loaded=true를 요구)와 컨테이너 헬스체크가 재학습 직후
+      실패합니다. "서버가 떠 있다"와 "예측할 준비가 됐다"를 eager 모드에서는 계속
+      일치시켜 두는 편이 맞습니다.
+    - lazy: 캐시만 비우고 다음 요청이 올리게 합니다. 재학습 직후 응답 경로를 막지 않습니다.
     """
     global _model_cache
+    if os.getenv("LOADING_MODE", "lazy") == "eager":
+        load_eager()
+        return
     _model_cache = None
