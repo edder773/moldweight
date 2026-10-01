@@ -75,6 +75,9 @@ class _MockModel:
     def predict_one(self, curve: list[list[float]]) -> float:
         return 115.16
 
+    def predict_many(self, curves: list[list[list[float]]]) -> list[float]:
+        return [self.predict_one(c) for c in curves]
+
 
 # 연결 1에서 B의 model_loader로 바꾼다: USE_MOCK_MODEL=0
 USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "1") == "1"
@@ -122,24 +125,26 @@ def batch_test(req: BatchTestRequest):
 
 def _run_batch(req: BatchTestRequest) -> BatchTestResponse:
     model = _get_model()
-    predictions: list[float] = []
+    # 샷마다 predict_one을 부르지 않고 한 번에 예측한다 (keras 호출 오버헤드를 한 번만 냄)
+    predicted_all = model.predict_many([shot.curve for shot in req.shots])
 
-    for shot in req.shots:
-        predicted = model.predict_one(shot.curve)
-        predictions.append(round(predicted, 2))
+    for shot, predicted in zip(req.shots, predicted_all):
         recent_predictions.append({"predicted": predicted, "actual": shot.actual_weight})
         # 재학습용으로 곡선과 실측 무게도 같이 쌓는다
         recent_shots.append(
             {"curve": shot.curve, "weight": shot.actual_weight, "cycle_counter": shot.cycle_counter}
         )
+    predictions = [round(p, 2) for p in predicted_all]
 
     recent_predictions[:] = recent_predictions[-WINDOW_SIZE:]
     recent_shots[:] = recent_shots[-RETRAIN_SHOTS:]
 
     drift_check = check_and_trigger(recent_predictions, recent_shots)
 
-    # 재학습이 끝나면(통과든 실패든) 새 모델 기준으로 다시 WINDOW_SIZE개를 모은다
+    # 재학습이 끝나면(통과든 실패든) 새 모델 기준으로 다시 WINDOW_SIZE개를 모으고,
+    # 다음 요청부터 새 Production 모델을 쓰도록 B의 모델 캐시를 비운다 (RULES 5장)
     if drift_check["status"] == "retrain_triggered":
         recent_predictions.clear()
+        model_loader.reload()
 
     return BatchTestResponse(predictions=predictions, drift_check=drift_check)
