@@ -67,7 +67,11 @@
   .pill.accent { background: var(--accent-soft); color: var(--accent); }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-  .page { max-width: 1040px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  /* 넓은 화면: 왼쪽에 생산 라인·파이프라인, 오른쪽에 운영 알람. 좁으면 한 열로. */
+  .page { max-width: 1480px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+  .col-main, .col-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .col-side { position: sticky; top: 76px; }
+  @media (max-width: 1100px) { .page { grid-template-columns: 1fr; } .col-side { position: static; } }
 
   /* ---------- 카드 ---------- */
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
@@ -91,7 +95,12 @@
   /* ---------- 조건 선택 (세그먼트) ---------- */
   .cond-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
   @media (max-width: 700px) { .cond-row { grid-template-columns: 1fr; } }
+  /* 버튼 상단의 얇은 진행 막대: 그 조건의 샷을 어디까지 보냈는지 */
+  .cond .prog { position: absolute; left: 0; top: 0; right: 0; height: 4px; background: var(--border); border-radius: 12px 12px 0 0; overflow: hidden; }
+  .cond .prog > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+  .cond.drift .prog > span { background: var(--err); }
   .cond {
+    position: relative; overflow: hidden;
     text-align: left; border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px;
     background: var(--panel-2); cursor: pointer; font-family: inherit; color: var(--text);
     display: flex; flex-direction: column; gap: 3px;
@@ -154,17 +163,17 @@
 
   /* ---------- 분기점 배너 / 신뢰 불가 띠 ---------- */
   .banner {
-    display: none; margin-top: 14px; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--border);
-    background: var(--panel-2); align-items: center; gap: 16px; flex-wrap: wrap;
+    display: none; margin-top: 10px; padding: 8px 12px; border-radius: 10px; border: 2px solid var(--border);
+    background: var(--panel-2); align-items: center; gap: 10px; flex-wrap: wrap; row-gap: 2px;
   }
   .banner.show { display: flex; }
   .banner.ok { border-color: var(--ok); background: var(--ok-soft); }
   .banner.warn { border-color: var(--warn); background: var(--warn-soft); }
   .banner.err { border-color: var(--err); background: var(--err-soft); }
-  .banner .big { font-size: 1.15rem; font-weight: 800; }
-  .banner .num { font-family: var(--mono); font-size: 1.6rem; font-weight: 800; }
-  .banner .why { font-size: 0.82rem; color: var(--muted); flex-basis: 100%; line-height: 1.5; }
-  .banner .btn { margin-left: auto; }
+  .banner .big { font-size: 0.98rem; font-weight: 800; }
+  .banner .num { font-family: var(--mono); font-size: 1.15rem; font-weight: 800; }
+  .banner .why { font-size: 0.76rem; color: var(--muted); flex-basis: 100%; line-height: 1.4; }
+  .banner .btn { margin-left: auto; padding: 6px 12px; font-size: 0.78rem; }
   .trust {
     display: none; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 9px;
     font-size: 0.8rem; font-weight: 700; background: var(--err-soft); color: var(--err); border: 1px solid var(--err);
@@ -216,7 +225,6 @@
   details.card[open] > summary { margin-bottom: 12px; }
 
   code { font-family: var(--mono); background: var(--panel-2); border: 1px solid var(--border); padding: 0 5px; border-radius: 4px; font-size: 0.9em; }
-  footer { color: var(--faint); font-size: 0.76rem; text-align: center; margin: 26px 0 10px; }
 </style>
 </head>
 <body>
@@ -238,6 +246,7 @@
 </div>
 
 <div class="page">
+<div class="col-main">
 
   <!-- ================= 1. 생산 라인 ================= -->
   <div class="card">
@@ -248,10 +257,12 @@
 
     <div class="cond-row">
       <button class="cond normal active" id="cond-normal" onclick="selectCond('normal')">
+        <span class="prog"><span id="prog-normal"></span></span>
         <span class="t"><span class="tag">정상</span>정상 생산</span>
         <span class="d">학습 때와 같은 공정 조건</span>
       </button>
       <button class="cond drift" id="cond-drift" onclick="selectCond('drift')">
+        <span class="prog"><span id="prog-drift"></span></span>
         <span class="t"><span class="tag">공정 변경</span>공정 조건이 바뀜</span>
         <span class="d">재료 흡습 · 틀 마모 · 온도 변경처럼 모델에 통보되지 않는 변화</span>
       </button>
@@ -260,6 +271,7 @@
     <div class="ctrl-row">
       <button class="btn primary" id="btn-run" onclick="toggleRun()" disabled>▶ 라인 가동</button>
       <button class="btn secondary" id="btn-reset" onclick="resetLine()">↺ 처음부터</button>
+      <!-- 검사 간격 선택 (시연에서는 숨김 · 기본값 INTERVAL_DEFAULT=2). 필요하면 주석을 풀면 interval()이 이 값을 읽는다.
       <label class="field">
         <span>검사 간격 (샷)</span>
         <select id="interval">
@@ -268,6 +280,7 @@
           <option value="5">5 · 다섯 샷에 하나</option>
         </select>
       </label>
+      -->
       <label class="field">
         <span>속도</span>
         <select id="speed">
@@ -285,7 +298,7 @@
       <button class="btn primary" id="banner-btn" onclick="resumeRun()">▶ 계속</button>
       <span class="why" id="banner-why"></span>
     </div>
-    <div class="trust" id="trust-strip"><span class="dot"></span><span id="trust-text">모델 판정 신뢰 불가 · 전수검사로 전환 (새 모델이 게이트를 통과할 때까지)</span></div>
+    <div class="trust" id="trust-strip"><span class="dot"></span><span id="trust-text">모델 판정 신뢰 불가 · 전수검사로 전환 — 모든 샷을 실측 비교 (새 모델이 게이트를 통과할 때까지)</span></div>
 
     <div id="drift-status" style="margin-top:14px;"></div>
 
@@ -343,6 +356,8 @@
     <div class="pipeline-track" id="pipeline-track"></div>
   </div>
 
+</div>
+<div class="col-side">
   <!-- ================= 3. 알람 + 로그 ================= -->
   <div class="card">
     <div class="section-head-row">
@@ -357,7 +372,9 @@
     </details>
   </div>
 
-  <!-- ================= 4. 업로드 (접힘) ================= -->
+  <!-- ================= 4. 업로드 (시연에서 쓰지 않아 숨김) =================
+       POST /data/upload 은 현재 구현에서 학습·재학습에 쓰이지 않고 /data/status 요약에만 쓰입니다.
+       API는 살아 있으므로 필요하면 아래 주석을 풀면 됩니다 (uploadFile() 함수는 그대로 있음).
   <details class="card">
     <summary>학습용 샷 데이터 업로드 (data/uploads/)</summary>
     <p style="margin:0 0 10px; color:var(--muted); font-size:0.8rem;">
@@ -369,10 +386,10 @@
     </div>
     <div id="upload-status" style="margin-top:10px;"></div>
   </details>
+  -->
 
 </div>
-
-<footer>MoldWeight AIOps · serving_app/static/index.html</footer>
+</div>
 
 <script>
 /* ===================== 전역 상태 ===================== */
@@ -391,6 +408,7 @@ const DEMO_FILES = { normal: "/demo/sample_moldweight.csv", drift: "/demo/drift_
 
 const shotFiles = { normal: null, drift: null }; // { name, shots: [{cycle_counter, curve, actual_weight}] }
 const cursor = { normal: 0, drift: 0 };          // 각 파일에서 다음에 보낼 샷의 인덱스
+const rangeStart = { normal: 0, drift: 0 };      // 각 조건의 시작 인덱스 (버튼 진행 막대 0% 지점)
 let cond = "normal";                             // 지금 선택된 조건
 let running = false;                             // 라인 가동 중인가
 let sentShots = 0;                               // 실측 비교한 샷 수 (재학습 샷 41개가 모였는지 표시용)
@@ -563,7 +581,14 @@ function loadShotFile(kind, input) {
 }
 
 /* ===================== 라인 상태 ===================== */
-function interval() { return parseInt(document.getElementById("interval").value, 10); }
+// 검사 간격: 몇 샷에 하나를 실측 비교하는가. 선택 요소가 없으면(시연 화면) 기본값을 쓴다.
+// 2인 이유: 공정 변경 구간(70°C, 101샷)에서 실측 50건이 나와 두 번째 재학습(게이트 통과)까지 도달한다.
+const INTERVAL_DEFAULT = 2;
+function interval() {
+  const el = document.getElementById("interval");
+  const v = el ? parseInt(el.value, 10) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : INTERVAL_DEFAULT;
+}
 function speed() { return parseInt(document.getElementById("speed").value, 10); }
 function driftStart() {
   const v = parseInt(document.getElementById("drift-start").value, 10);
@@ -584,6 +609,7 @@ function resetLine() {
   cursor.normal = n ? Math.max(0, n.shots.length - WINDOW_SIZE * interval()) : 0;
   cursor.drift = 0;
   if (d) { const i = d.shots.findIndex((s) => s.cycle_counter >= driftStart()); cursor.drift = i < 0 ? d.shots.length : i; }
+  rangeStart.normal = cursor.normal; rangeStart.drift = cursor.drift; // 진행 막대의 0% 지점
   streamed = 0; sentShots = 0; windowFill = 0; feed.length = 0; lastPipelineRun = null;
   trust = true; driftSeen = false; hideBanner(); renderTrust();
   renderPipeline(); renderLive(null, null); renderFeed();
@@ -601,6 +627,10 @@ function updateProgress() {
   // 진행 위치는 접힌 영역에만 작게 표시한다 (시연 화면에서는 보이지 않음).
   const pos = (f, c) => f ? (c < f.shots.length ? `다음 샷 ${f.shots[c].cycle_counter} · 남은 ${f.shots.length - c}` : "끝") : "없음";
   document.getElementById("cursor-meta").textContent = `정상 ${pos(n, cursor.normal)} · 공정 변경 ${pos(d, cursor.drift)}`;
+  // 버튼 상단 진행 막대: 시작 지점부터 파일 끝까지 중 어디까지 보냈는지
+  const pct = (f, c, s) => f && f.shots.length > s ? Math.min(100, (c - s) / (f.shots.length - s) * 100) : 0;
+  document.getElementById("prog-normal").style.width = `${pct(n, cursor.normal, rangeStart.normal)}%`;
+  document.getElementById("prog-drift").style.width = `${pct(d, cursor.drift, rangeStart.drift)}%`;
 }
 
 /* ===================== 라인 가동 (샷 한 개씩) ===================== */
@@ -618,6 +648,7 @@ async function startRun() {
   const file = shotFiles[cond];
   if (!file || cursor[cond] >= file.shots.length) return;
   running = true;
+  hideBanner(); // 이전 분기점 배너는 새 가동과 함께 지운다
   const b = document.getElementById("btn-run");
   b.textContent = "⏸ 정지"; b.className = "btn danger";
   document.getElementById("cond-normal").disabled = true;
@@ -627,7 +658,8 @@ async function startRun() {
   while (running && cursor[cond] < file.shots.length) {
     const shot = file.shots[cursor[cond]++];
     streamed++;
-    const sampled = streamed % interval() === 0;
+    // 모델 판정을 신뢰할 수 없는 동안(드리프트 감지 ~ 새 모델 승격)은 전수검사: 검사 간격을 무시하고 모든 샷을 실측 비교한다.
+    const sampled = !trust || streamed % interval() === 0;
     try {
       if (sampled) {
         const { stop, events } = await inspectShot(shot, label);
@@ -670,22 +702,22 @@ async function inspectShot(shot, label) {
 const BRANCH = {
   normal_ok:      { level: "ok",   title: "정상 판정",            why: "실측 21건의 평균 오차가 0.3 g 이하. 모델 판정을 그대로 씁니다." },
   drift_detected: { level: "warn", title: "드리프트 감지",         why: "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 최근 실측 41건이 모이는 대로 재학습합니다." },
-  gate_failed:    { level: "err",  title: "재학습 → 게이트 실패",  why: "재학습 데이터 41건에 조건 변경 전 샷이 섞여 있어 기준(0.3 g)을 넘지 못했습니다. 기존 모델과 전수검사를 유지하고, 변경 후 실측이 더 쌓이면 다시 시도합니다." },
+  gate_failed:    { level: "err",  title: "재학습 → 게이트 실패",  why: "재학습한 모델이 기준(0.3 g)을 넘지 못했습니다. 기존 모델을 유지하고 전수검사도 유지합니다. 다음 41샷으로 다시 시도합니다." },
   promoted:       { level: "ok",   title: "재학습 → 게이트 통과 → 배포", why: "새 모델이 기준을 통과해 서빙 모델이 교체됐습니다. 모델 판정으로 복귀하고 전수검사를 해제합니다." },
 };
-function showBanner(ev, num) {
+function showBanner(ev, num, why) {
   const b = document.getElementById("banner");
   b.className = `banner show ${BRANCH[ev].level}`;
   document.getElementById("banner-title").textContent = BRANCH[ev].title;
   document.getElementById("banner-num").textContent = num;
-  document.getElementById("banner-why").textContent = BRANCH[ev].why;
+  document.getElementById("banner-why").textContent = why || BRANCH[ev].why;
   document.getElementById("banner-btn").style.display = ev === "normal_ok" || !running ? "none" : ""; // 계속 버튼은 라인이 멈춘 상태에서만
   b.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 function hideBanner() { document.getElementById("banner").className = "banner"; }
 function pauseAt(ev) {
   if (ev.kind === "normal_ok") { showBanner("normal_ok", ev.num); return Promise.resolve(); }
-  showBanner(ev.kind, ev.num);
+  showBanner(ev.kind, ev.num, ev.why);
   paused = true;
   const b = document.getElementById("btn-run");
   b.textContent = "▶ 계속"; b.className = "btn primary";
@@ -725,7 +757,7 @@ async function sendBatch(kind) {
     renderLive(shots[shots.length - 1], (data.predictions || [])[shots.length - 1]);
     const events = await applyCheck(data.drift_check || {}, versionBefore, label, range);
     // 묶음 전송은 라인이 돌지 않으므로 멈출 게 없고, 마지막 분기점만 배너로 보여준다.
-    if (events.length) showBanner(events[events.length - 1].kind, events[events.length - 1].num);
+    if (events.length) { const last = events[events.length - 1]; showBanner(last.kind, last.num, last.why); }
     showResult(document.getElementById("drift-result"), data, false);
   } catch (e) {
     setStatus("err", `연결 실패: ${escapeHtml(e.message)}`);
@@ -772,7 +804,11 @@ async function applyCheck(check, versionBefore, label, where) {
   if (kind === "ok" && cond === "normal") events.push({ kind: "normal_ok", num: `${r} g` });
   if ((kind === "drift_waiting" || kind === "gate_failed" || kind === "promoted") && !driftSeen) {
     driftSeen = true; trust = false;
-    events.push({ kind: "drift_detected", num: `${r} g > 0.3 g` });
+    // 감지와 재학습이 같은 응답에서 끝났으면(41건이 이미 확보) 미래형이 아니라 "바로 재학습했다"고 알린다.
+    const why = kind === "drift_waiting"
+      ? "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 최근 실측 41건이 모이는 대로 재학습합니다."
+      : "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 최근 실측 41건이 이미 확보되어 바로 재학습했습니다 (계속 → 결과).";
+    events.push({ kind: "drift_detected", num: `${r} g > 0.3 g`, why });
   }
   if (kind === "gate_failed") events.push({ kind: "gate_failed", num: `v${check.model_version} 유지` });
   if (kind === "promoted") { trust = true; driftSeen = false; events.push({ kind: "promoted", num: `v${versionBefore ?? "?"} → v${versionAfter ?? "?"}` }); }
@@ -831,7 +867,7 @@ async function loadAlarms() {
   const items = lines.map((l) => {
     const m = l.match(LOG_LINE);
     return m ? { ts: m[1], tag: m[4], msg: m[3] } : { ts: "", tag: "INFO", msg: l };
-  }).reverse().slice(0, 6);
+  }).reverse().slice(0, 10);
   if (!items.length) { list.innerHTML = `<div class="empty">아직 알람이 없습니다</div>`; return; }
   const cls = { WARN: "warn", FAIL: "err", OK: "ok", INFO: "info" };
   list.innerHTML = items.map((it) => `
