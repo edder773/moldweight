@@ -113,7 +113,7 @@ def get_model() -> LoadedModel:
 def reload() -> None:
     """
     재학습으로 Production 버전이 바뀐 뒤, 캐시에 남은 옛 모델이 계속 서빙되지 않도록
-    교체합니다. 재학습이 끝난 뒤 C가 호출합니다 (RULES 5장: recent_predictions를 비울 때 함께).
+    교체합니다. 재학습 결과가 승격(promoted=True)일 때 D의 check_and_trigger가 한 번 호출합니다 (RULES 5장).
 
     교체 방식은 LOADING_MODE를 따릅니다. 로딩 비용을 "언제, 누가" 치를지가 이 환경변수로
     선언된 운영 방침이고, 재학습은 그 방침에서 예외가 아니기 때문입니다.

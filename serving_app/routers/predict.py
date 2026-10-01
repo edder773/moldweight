@@ -118,10 +118,9 @@ def _run_batch(req: BatchTestRequest) -> BatchTestResponse:
 
     drift_check = check_and_trigger(recent_predictions, recent_shots)
 
-    # 재학습이 끝나면(통과든 실패든) 새 모델 기준으로 다시 WINDOW_SIZE개를 모으고,
-    # 다음 요청부터 새 Production 모델을 쓰도록 B의 모델 캐시를 비운다 (RULES 5장)
+    # 재학습이 끝나면(통과든 실패든) 새 모델 기준으로 다시 WINDOW_SIZE개를 모은다 (RULES 5장).
+    # 모델 교체(model_loader.reload)는 승격됐을 때만 D의 check_and_trigger가 한 번 부르므로 여기서는 부르지 않는다.
     if drift_check["status"] == "retrain_triggered":
         recent_predictions.clear()
-        model_loader.reload()
 
     return BatchTestResponse(predictions=predictions, drift_check=drift_check)
