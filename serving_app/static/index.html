@@ -326,10 +326,10 @@
       <div class="ctrl-row">
         <label class="field"><span>정상 샷 파일</span><input type="file" accept=".csv" onchange="loadShotFile('normal', this)" /><div class="file-meta" id="normal-meta"></div></label>
         <label class="field"><span>공정 변경 샷 파일</span><input type="file" accept=".csv" onchange="loadShotFile('drift', this)" /><div class="file-meta" id="drift-meta"></div></label>
-        <label class="field"><span>공정 변경 시작 샷</span><input type="number" id="drift-start" placeholder="21122" onchange="resetLine()" style="max-width:140px;" /></label>
+        <label class="field"><span>공정 변경 시작 샷</span><input type="number" id="drift-start" placeholder="21101" onchange="resetLine()" style="max-width:140px;" /></label>
         <span class="file-meta" id="cursor-meta"></span>
       </div>
-      <div class="file-meta" style="margin-top:8px;">시연 데이터: 정상 = sample_moldweight.csv 끝부분(실험 20), 공정 변경 = drift_shots_23.csv의 금형온도 70°C 구간(샷 21122~)</div>
+      <div class="file-meta" style="margin-top:8px;">시연 데이터: 정상 = sample_moldweight.csv 끝부분(실험 20), 공정 변경 = drift_shots_23.csv 샷 21101부터 (90°C·lot 2 구간 34샷 뒤 21135부터 금형온도 70°C)</div>
       <div id="drift-result" class="result-box"></div>
     </details>
   </div>
@@ -382,9 +382,10 @@ const N_CHANNELS = 2;
 const WINDOW_SIZE = 21;
 const RETRAIN_SHOTS = 41;
 const DRIFT_THRESHOLD = 0.3;
-// 공정 변경 파일(실험 23)에서 금형온도 70°C 구간이 시작되는 샷. 그 앞 구간(80·90°C)은
-// 현재 모델로도 RMSE 0.3 이내라 드리프트가 나지 않으므로 시연은 여기서 시작한다.
-const DRIFT_START_DEFAULT = 21122;
+// 공정 변경 파일(실험 23)의 시연 시작 샷. 금형온도 70°C 전환(21135) 앞에 90°C·lot 2 구간 34샷을
+// 붙여서, 변경 전에는 정상으로 흐르다가 전환 뒤 틀어지는 모습이 보이게 한다. 그 앞 구간(80·90°C)은
+// 현재 모델로도 RMSE 0.3 이내라 드리프트가 나지 않는다.
+const DRIFT_START_DEFAULT = 21101;
 // 시연용 샷 파일. static/ 아래에 두어 서버가 그대로 내준다 (data/의 복사본).
 const DEMO_FILES = { normal: "/demo/sample_moldweight.csv", drift: "/demo/drift_shots_23.csv" };
 
@@ -428,13 +429,6 @@ function initTheme() {
 
 /* ===================== 유틸 ===================== */
 function fmt(x, digits = 3) { return typeof x === "number" ? x.toFixed(digits) : "-"; }
-function relTime(ts) {
-  if (!ts) return "-";
-  const diff = Math.max(0, Date.now() / 1000 - ts);
-  if (diff < 60) return `${Math.floor(diff)}초 전`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  return `${Math.floor(diff / 3600)}시간 전`;
-}
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 async function getJSON(path) {
@@ -675,8 +669,8 @@ async function inspectShot(shot, label) {
 /* ===================== 분기점 멈춤 ===================== */
 const BRANCH = {
   normal_ok:      { level: "ok",   title: "정상 판정",            why: "실측 21건의 평균 오차가 0.3 g 이하. 모델 판정을 그대로 씁니다." },
-  drift_detected: { level: "warn", title: "드리프트 감지",         why: "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 바뀐 조건에서 실측된 샷이 41개 모이면 재학습합니다." },
-  gate_failed:    { level: "err",  title: "재학습 → 게이트 실패",  why: "재학습한 모델이 기준(0.3 g)을 넘지 못했습니다. 기존 모델을 유지하고 전수검사도 유지합니다. 다음 41샷으로 다시 시도합니다." },
+  drift_detected: { level: "warn", title: "드리프트 감지",         why: "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 최근 실측 41건이 모이는 대로 재학습합니다." },
+  gate_failed:    { level: "err",  title: "재학습 → 게이트 실패",  why: "재학습 데이터 41건에 조건 변경 전 샷이 섞여 있어 기준(0.3 g)을 넘지 못했습니다. 기존 모델과 전수검사를 유지하고, 변경 후 실측이 더 쌓이면 다시 시도합니다." },
   promoted:       { level: "ok",   title: "재학습 → 게이트 통과 → 배포", why: "새 모델이 기준을 통과해 서빙 모델이 교체됐습니다. 모델 판정으로 복귀하고 전수검사를 해제합니다." },
 };
 function showBanner(ev, num) {
@@ -756,7 +750,7 @@ async function applyCheck(check, versionBefore, label, where) {
   let versionAfter = versionBefore;
   if (check.status === "retrain_triggered") versionAfter = await refreshServing();
   windowFill = check.status === "retrain_triggered" ? 0 : (check.window ?? windowFill); // 재학습 후 서버가 윈도우를 비움
-  lastPipelineRun = { driftCheck: check, ts: Date.now() / 1000, versionBefore, versionAfter };
+  lastPipelineRun = { driftCheck: check, where, versionBefore, versionAfter };
   renderPipeline();
   renderWindow(check);
   loadAlarms();
@@ -870,9 +864,9 @@ function renderPipeline() {
     track.innerHTML = PIPELINE_STAGES.map((t, i) => stageHtml(t, i, "idle", "대기")).join("");
     return;
   }
-  const { driftCheck, ts } = lastPipelineRun;
+  const { driftCheck, where } = lastPipelineRun;
   badge.className = "pill neutral";
-  badge.textContent = `마지막 판정 ${relTime(ts)}`;
+  badge.textContent = `${where} 판정 기준`; // 파이프라인 표시는 마지막 실측 판정 시점의 상태
   const kind = classify(driftCheck);
   const states = {
     collecting:    ["ok", "warn", "idle", "idle", "idle", "idle", "idle"],
