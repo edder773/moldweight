@@ -32,6 +32,13 @@ def check_and_trigger(recent_predictions: list[dict], recent_shots: list[dict]) 
         DRIFT_THRESHOLD,
     )
 
+    if len(recent_shots) < RETRAIN_SHOTS:
+        return {
+            "status": "collecting",
+            "rmse": rolling_rmse,
+            "window": WINDOW_SIZE,
+        }
+
     rows = recent_shots[-RETRAIN_SHOTS:]
     logger.info("[INFO] retrain triggered shots=%s", len(rows))
 
