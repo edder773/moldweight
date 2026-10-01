@@ -8,7 +8,6 @@ POST /predict/batch-test - 실측 무게가 붙은 샷 여러 개를 예측하�
 곡선 길이·채널 수·값 범위 검증은 serving_app/schemas.py에서 하고, 어긋나면 422입니다.
 """
 import math
-import os
 import threading
 
 from fastapi import APIRouter
@@ -67,28 +66,6 @@ recent_shots: list[dict] = []        # [{"curve", "weight", "cycle_counter"}], �
 _batch_lock = threading.Lock()       # 두 리스트를 건드리는 batch-test를 한 번에 하나씩
 
 
-class _MockModel:
-    """B의 모델이 오기 전까지 쓰는 가짜 모델 (RULES 9장 "가짜로 먼저")."""
-
-    version = "mock"
-
-    def predict_one(self, curve: list[list[float]]) -> float:
-        return 115.16
-
-    def predict_many(self, curves: list[list[list[float]]]) -> list[float]:
-        return [self.predict_one(c) for c in curves]
-
-
-# 연결 1에서 B의 model_loader로 바꾼다: USE_MOCK_MODEL=0
-USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "1") == "1"
-
-
-def _get_model():
-    if USE_MOCK_MODEL:
-        return _MockModel()
-    return model_loader.get_model()
-
-
 _CURVE_422 = {
     422: {"description": "곡선 길이가 CURVE_LEN이 아님, 한 점의 값이 N_CHANNELS개가 아님, 값이 VALUE_MIN~VALUE_MAX 밖"}
 }
@@ -101,7 +78,7 @@ _CURVE_422 = {
     responses=_CURVE_422,
 )
 def predict(req: PredictRequest):
-    model = _get_model()
+    model = model_loader.get_model()
     predicted_weight = model.predict_one(req.curve)
     return PredictResponse(predicted_weight=round(predicted_weight, 2), model_version=model.version)
 
@@ -124,7 +101,7 @@ def batch_test(req: BatchTestRequest):
 
 
 def _run_batch(req: BatchTestRequest) -> BatchTestResponse:
-    model = _get_model()
+    model = model_loader.get_model()
     # 샷마다 predict_one을 부르지 않고 한 번에 예측한다 (keras 호출 오버헤드를 한 번만 냄)
     predicted_all = model.predict_many([shot.curve for shot in req.shots])
 
