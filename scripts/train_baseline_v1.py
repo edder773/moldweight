@@ -27,9 +27,6 @@ from serving_app.lstm_model import build_model
 DEFAULT_CSV = "data/sample_moldweight.csv"
 MODEL_PATH = "serving_app/models/moldweight_v1.keras"
 
-# 검증 RMSE가 이 값을 밑돌면 학습 길이가 충분하다고 본 지점 (lstm_model.py 실험 표 참고).
-RECOMMENDED_EPOCHS = 200
-
 
 def rmse(y_true, y_pred) -> float:
     return (sum((a - b) ** 2 for a, b in zip(y_true, y_pred)) / len(y_true)) ** 0.5
@@ -79,9 +76,6 @@ def main():
     if score > RMSE_GATE:
         print(f"※ 게이트({RMSE_GATE} g) 미달입니다. 이 로컬 모델은 서빙 확인용이며, "
               "배포 판정은 train_and_register.py에서 MLflow로 다시 정식 검증합니다.")
-    if BASE_EPOCHS < RECOMMENDED_EPOCHS:
-        print(f"※ config.BASE_EPOCHS={BASE_EPOCHS}입니다. 측정상 {RECOMMENDED_EPOCHS} epoch에서 "
-              "검증 RMSE가 최소였고 드리프트 감지 윈도우도 2배였습니다 (lstm_model.py 참고).")
 
 
 if __name__ == "__main__":

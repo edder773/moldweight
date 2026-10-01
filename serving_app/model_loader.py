@@ -65,7 +65,8 @@ def _load_from_local() -> LoadedModel:
 
     keras_model = keras.models.load_model(LOCAL_MODEL_PATH)
     scaler = CurveScaler.load(SCALER_PATH)
-    return LoadedModel(keras_model=keras_model, scaler=scaler, version="v1-local")
+    # "local": schemas.py가 문서화한 model_version 계약. MLflow를 쓰면 Registry 버전 번호가 들어갑니다.
+    return LoadedModel(keras_model=keras_model, scaler=scaler, version="local")
 
 
 def _load_from_mlflow() -> LoadedModel:
