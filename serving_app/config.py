@@ -9,7 +9,7 @@ RETRAIN_SHOTS = 41         # 재학습에 쓰는 최근 샷 수
 REGRESSION_MARGIN = 0.05   # 새 모델 RMSE ≤ 기존 Production RMSE + 0.05 g
 BASELINE_IMPROVE = 0.5     # 첫 배포만: 평균 예측보다 50% 이상 개선
 
-BASE_EPOCHS = 50
+BASE_EPOCHS = 200          # 50 → 200: 검증 RMSE 0.1479 → 0.1112, 학습 약 20초
 FINE_TUNE_EPOCHS = 10
 FINE_TUNE_LR = 1e-3        # 예비 실험에서 3/3 통과한 값 (스켈레톤 기본 1e-4 아님)
 SEED = 42
