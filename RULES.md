@@ -95,8 +95,9 @@ load_rows(csv_path) -> list[row]      # cycle_counter 오름차순
 ### 3-4. 스케일러 (B)
 
 - 이름: `CurveScaler` (`data/features.py`). 스켈레톤 `HAICScaler`를 대체합니다.
-- 채널별 min-max, 무게도 min-max. **`sample_moldweight.csv`로 한 번만 fit**해서 `serving_app/models/scaler.pkl`에 저장하고 커밋합니다.
-- 재학습 때 다시 fit하지 않습니다.
+- 채널별 min-max, 무게도 min-max.
+- 순서: `sample_moldweight.csv`를 **시간순으로 학습·검증으로 나눈 뒤(6장의 분할) → 학습 구간으로만 fit** → `serving_app/models/scaler.pkl`에 저장하고 커밋합니다. 검증 구간이 fit에 들어가면 검증 데이터의 범위가 전처리에 섞입니다 (앞 80% 기준 사출압력 최댓값 1,002.91, 전체는 1,006.10).
+- 검증·서빙·재학습에서는 저장된 스케일러를 그대로 씁니다. 재학습 때 다시 fit하지 않습니다.
 - 메서드: `fit(rows)`, `transform_curve(curve) -> 128×2`, `scale_weight(w)`, `inverse_weight(s)`, `save(path)`, `load(path)`
 
 ---
