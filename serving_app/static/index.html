@@ -36,17 +36,6 @@
     --err: #ff6b6b; --err-soft: rgba(255, 107, 107, 0.14);
     --shadow: none;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --border: #2a2f3a;
-      --text: #e9edf3; --muted: #9aa4b8; --faint: #5d6678;
-      --accent: #8b85f7; --accent-soft: rgba(139, 133, 247, 0.16);
-      --ok: #3ddc97; --ok-soft: rgba(61, 220, 151, 0.14);
-      --warn: #f5b64c; --warn-soft: rgba(245, 182, 76, 0.14);
-      --err: #ff6b6b; --err-soft: rgba(255, 107, 107, 0.14);
-      --shadow: none;
-    }
-  }
 
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
@@ -99,41 +88,89 @@
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
 
-  /* ---------- 시나리오 버튼 (시연용 큰 버튼) ---------- */
-  .scenario-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-  @media (max-width: 700px) { .scenario-row { grid-template-columns: 1fr; } }
-  .scenario {
-    text-align: left; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+  /* ---------- 조건 선택 (세그먼트) ---------- */
+  .cond-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  @media (max-width: 700px) { .cond-row { grid-template-columns: 1fr; } }
+  .cond {
+    text-align: left; border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px;
     background: var(--panel-2); cursor: pointer; font-family: inherit; color: var(--text);
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 3px;
   }
-  .scenario:hover:not(:disabled) { border-color: var(--accent); }
-  .scenario:disabled { opacity: 0.45; cursor: not-allowed; }
-  .scenario .t { font-size: 0.98rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-  .scenario .t .tag { font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
-  .scenario.normal .t .tag { background: var(--ok-soft); color: var(--ok); }
-  .scenario.drift .t .tag { background: var(--err-soft); color: var(--err); }
-  .scenario .d { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
-  .scenario .p { font-size: 0.74rem; color: var(--faint); font-family: var(--mono); }
+  .cond.active { border-color: var(--accent); background: var(--accent-soft); }
+  .cond:disabled { opacity: 0.45; cursor: not-allowed; }
+  .cond .t { font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .cond .t .tag { font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+  .cond.normal .t .tag { background: var(--ok-soft); color: var(--ok); }
+  .cond.drift .t .tag { background: var(--err-soft); color: var(--err); }
+  .cond .d { font-size: 0.76rem; color: var(--muted); line-height: 1.5; }
+  .cond .p { font-size: 0.72rem; color: var(--faint); font-family: var(--mono); }
 
-  /* ---------- 폼 ---------- */
-  .file-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 700px) { .file-row { grid-template-columns: 1fr; } }
-  input[type="file"] { color: var(--muted); font-size: 0.8rem; max-width: 100%; }
+  .ctrl-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: flex-end; }
   .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.74rem; color: var(--muted); }
   .field > span { font-weight: 600; }
-  .field input[type="number"] {
+  .field select, .field input[type="number"] {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
-    padding: 7px 10px; font-size: 0.83rem; font-family: var(--mono); max-width: 180px;
+    padding: 7px 10px; font-size: 0.83rem; font-family: var(--mono);
   }
+  input[type="file"] { color: var(--muted); font-size: 0.8rem; max-width: 100%; }
   .file-meta { font-size: 0.72rem; color: var(--faint); font-family: var(--mono); min-height: 1.2em; line-height: 1.5; }
 
-  /* ---------- 결과 타일 ---------- */
-  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
-  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .stat .k { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
-  .stat .v { font-size: 1.25rem; font-weight: 800; margin-top: 2px; font-family: var(--mono); }
-  .stat .v.ok { color: var(--ok); } .stat .v.warn { color: var(--warn); } .stat .v.err { color: var(--err); }
+  /* ---------- 라이브 패널 ---------- */
+  .live { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; margin-top: 14px; }
+  @media (max-width: 760px) { .live { grid-template-columns: 1fr; } }
+  .live-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .live-box .k { font-size: 0.7rem; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .now { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .now .shot { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .now .w { font-family: var(--mono); font-size: 1.9rem; font-weight: 800; line-height: 1; }
+  .now .sub { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+  .bar { height: 10px; border-radius: 999px; background: var(--border); overflow: hidden; margin-top: 6px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+  .bar.warn > div { background: var(--warn); }
+  .bar.ok > div { background: var(--ok); }
+  .kv { display: flex; justify-content: space-between; font-size: 0.78rem; margin-top: 8px; }
+  .kv .v { font-family: var(--mono); font-weight: 700; }
+  .kv .v.ok { color: var(--ok); } .kv .v.warn { color: var(--warn); } .kv .v.err { color: var(--err); }
+  .version-box {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px;
+    background: var(--accent-soft); border: 1px solid var(--accent);
+  }
+  .version-box .k { margin: 0; color: var(--accent); }
+  .version-box .ver { font-family: var(--mono); font-size: 1.7rem; font-weight: 800; color: var(--accent); line-height: 1; }
+  .version-box .note { font-size: 0.74rem; color: var(--muted); }
+  .version-box.changed { background: var(--ok-soft); border-color: var(--ok); }
+  .version-box.changed .k, .version-box.changed .ver { color: var(--ok); }
+  .version-box.kept { background: var(--warn-soft); border-color: var(--warn); }
+  .version-box.kept .k, .version-box.kept .ver { color: var(--warn); }
+
+  table.feed { width: 100%; border-collapse: collapse; font-size: 0.76rem; font-family: var(--mono); margin-top: 4px; }
+  table.feed th { text-align: right; color: var(--muted); font-weight: 600; padding: 2px 6px; border-bottom: 1px solid var(--border); font-family: var(--sans); font-size: 0.7rem; }
+  table.feed td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.feed th:first-child, table.feed td:first-child { text-align: left; }
+  table.feed tr.sampled td { background: var(--accent-soft); }
+  table.feed td.err { color: var(--warn); font-weight: 700; }
+  table.feed td.muted { color: var(--faint); }
+  table.feed tr.untrusted td.pred { color: var(--faint); font-style: italic; }
+
+  /* ---------- 분기점 배너 / 신뢰 불가 띠 ---------- */
+  .banner {
+    display: none; margin-top: 14px; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--panel-2); align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .banner.show { display: flex; }
+  .banner.ok { border-color: var(--ok); background: var(--ok-soft); }
+  .banner.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .banner.err { border-color: var(--err); background: var(--err-soft); }
+  .banner .big { font-size: 1.15rem; font-weight: 800; }
+  .banner .num { font-family: var(--mono); font-size: 1.6rem; font-weight: 800; }
+  .banner .why { font-size: 0.82rem; color: var(--muted); flex-basis: 100%; line-height: 1.5; }
+  .banner .btn { margin-left: auto; }
+  .trust {
+    display: none; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 9px;
+    font-size: 0.8rem; font-weight: 700; background: var(--err-soft); color: var(--err); border: 1px solid var(--err);
+  }
+  .trust.show { display: flex; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); padding-bottom: 8px; }
 
   /* ---------- 파이프라인 ---------- */
   .pipeline-track { display: flex; align-items: stretch; overflow-x: auto; padding: 4px 2px; gap: 6px; }
@@ -202,56 +239,97 @@
 
 <div class="page">
 
-  <!-- ================= 1. 시뮬레이션 ================= -->
+  <!-- ================= 1. 생산 라인 ================= -->
   <div class="card">
     <div class="section-head">
-      <h2><span class="step">1</span>생산 라인 시뮬레이션</h2>
-      <p>샷 21개를 한 배치로 서버에 보내 무게를 예측하고, 실측과의 오차(RMSE)로 드리프트를 판정합니다.</p>
-    </div>
-    <div class="file-row">
-      <label class="field">
-        <span>정상 샷 파일 · data/sample_moldweight.csv</span>
-        <input type="file" id="normal-file" accept=".csv" onchange="loadShotFile('normal', this)" />
-        <div class="file-meta" id="normal-meta"></div>
-      </label>
-      <label class="field">
-        <span>공정 변경 샷 파일 · data/drift_shots_23.csv</span>
-        <input type="file" id="drift-file" accept=".csv" onchange="loadShotFile('drift', this)" />
-        <div class="file-meta" id="drift-meta"></div>
-      </label>
+      <h2><span class="step">1</span>생산 라인</h2>
+      <p>샷이 하나씩 들어오면 모델이 압력 곡선으로 무게를 예측합니다. 검사 간격마다 한 샷만 실측해서 예측과 비교하고, 실측 21건의 오차(RMSE)로 모델 드리프트를 판정합니다.</p>
     </div>
 
-    <div class="scenario-row">
-      <button class="scenario normal" id="btn-normal" onclick="sendBatch('normal')" disabled>
-        <span class="t"><span class="tag">정상</span>정상 생산 샷 21개 보내기</span>
-        <span class="d">학습 때와 같은 공정 조건 · 기대 결과: 정상</span>
-        <span class="p" id="normal-progress">파일을 먼저 선택하세요</span>
+    <div class="cond-row">
+      <button class="cond normal active" id="cond-normal" onclick="selectCond('normal')">
+        <span class="t"><span class="tag">정상</span>정상 생산</span>
+        <span class="d">학습 때와 같은 공정 조건</span>
       </button>
-      <button class="scenario drift" id="btn-drift" onclick="sendBatch('drift')" disabled>
-        <span class="t"><span class="tag">공정 변경</span>금형온도 70°C로 바뀐 샷 21개 보내기</span>
-        <span class="d">기대 결과: 드리프트 감지 → 재학습 → 게이트 판정</span>
-        <span class="p" id="drift-progress">파일을 먼저 선택하세요</span>
+      <button class="cond drift" id="cond-drift" onclick="selectCond('drift')">
+        <span class="t"><span class="tag">공정 변경</span>공정 조건이 바뀜</span>
+        <span class="d">재료 흡습 · 틀 마모 · 온도 변경처럼 모델에 통보되지 않는 변화</span>
       </button>
     </div>
+
+    <div class="ctrl-row">
+      <button class="btn primary" id="btn-run" onclick="toggleRun()" disabled>▶ 라인 가동</button>
+      <button class="btn secondary" id="btn-reset" onclick="resetLine()">↺ 처음부터</button>
+      <label class="field">
+        <span>검사 간격 (샷)</span>
+        <select id="interval">
+          <option value="1">1 · 모든 샷 실측</option>
+          <option value="2" selected>2 · 두 샷에 하나</option>
+          <option value="5">5 · 다섯 샷에 하나</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>속도</span>
+        <select id="speed">
+          <option value="250">느리게</option>
+          <option value="120" selected>보통</option>
+          <option value="40">빠르게</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="pause-at-branch" checked /> 분기점에서 멈춤 (감지 · 게이트 실패 · 배포)</label>
+    </div>
+
+    <div class="banner" id="banner">
+      <span class="big" id="banner-title"></span>
+      <span class="num" id="banner-num"></span>
+      <button class="btn primary" id="banner-btn" onclick="resumeRun()">▶ 계속</button>
+      <span class="why" id="banner-why"></span>
+    </div>
+    <div class="trust" id="trust-strip"><span class="dot"></span><span id="trust-text">모델 판정 신뢰 불가 · 전수검사로 전환 (새 모델이 게이트를 통과할 때까지)</span></div>
 
     <div id="drift-status" style="margin-top:14px;"></div>
-    <div class="stat-row" id="stat-row" style="display:none;">
-      <div class="stat"><div class="k">이 배치 RMSE</div><div class="v" id="stat-batch">-</div></div>
-      <div class="stat"><div class="k">판정 RMSE · 임계 0.3 g</div><div class="v" id="stat-window">-</div></div>
-      <div class="stat"><div class="k">재학습 샷 · 41개 필요</div><div class="v" id="stat-shots">-</div></div>
-      <div class="stat"><div class="k">서빙 모델 버전</div><div class="v" id="stat-version">-</div></div>
+
+    <div class="live">
+      <div class="live-box">
+        <div class="version-box" id="version-box">
+          <span class="k">서빙 중인 모델</span>
+          <span class="ver" id="kv-version">v-</span>
+          <span class="note" id="version-note">MLflow Production</span>
+        </div>
+        <div class="k" style="margin-top:12px;">지금 샷</div>
+        <div class="now">
+          <span class="shot" id="now-shot">-</span>
+          <span class="w" id="now-pred">-</span>
+          <span class="sub" id="now-sub">예측 무게 (g)</span>
+        </div>
+        <div class="k" style="margin-top:12px;">드리프트 판정 윈도우 · 실측 <span id="win-n">0</span>/21</div>
+        <div class="bar" id="win-bar"><div></div></div>
+        <div class="kv"><span>판정 RMSE (임계 0.3 g)</span><span class="v" id="kv-rmse">-</span></div>
+        <div class="kv"><span>재학습 샷 (41개 필요)</span><span class="v" id="kv-shots">0 / 41</span></div>
+      </div>
+      <div class="live-box">
+        <div class="k">최근 샷 (파란 줄 = 실측 검사)</div>
+        <table class="feed">
+          <thead><tr><th>샷</th><th>예측</th><th>실측</th><th>오차</th></tr></thead>
+          <tbody id="feed"><tr><td class="muted" colspan="4">아직 없음</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
     <details>
-      <summary>다른 구간 보내기 · 응답 JSON</summary>
-      <div class="btn-row" style="margin-top:8px; align-items:flex-end;">
-        <label class="field">
-          <span>공정 변경 파일의 시작 샷 (cycle_counter)</span>
-          <input type="number" id="drift-start" placeholder="21122" onchange="resetCursor()" />
-        </label>
-        <button class="btn secondary small" onclick="resetCursor()">처음 샷으로 되돌리기</button>
+      <summary>21샷 묶음 전송 · 다른 파일 사용 · 응답 JSON</summary>
+      <div class="btn-row">
+        <button class="btn secondary small" id="btn-batch-normal" onclick="sendBatch('normal')" disabled>정상 21샷 한 번에 보내기</button>
+        <button class="btn secondary small" id="btn-batch-drift" onclick="sendBatch('drift')" disabled>공정 변경 21샷 한 번에 보내기</button>
+        <span class="file-meta">라인 가동과 같은 데이터·커서를 씀. 묶음 하나 = 실측 21건 = 판정 한 번</span>
+      </div>
+      <div class="ctrl-row">
+        <label class="field"><span>정상 샷 파일</span><input type="file" accept=".csv" onchange="loadShotFile('normal', this)" /><div class="file-meta" id="normal-meta"></div></label>
+        <label class="field"><span>공정 변경 샷 파일</span><input type="file" accept=".csv" onchange="loadShotFile('drift', this)" /><div class="file-meta" id="drift-meta"></div></label>
+        <label class="field"><span>공정 변경 시작 샷</span><input type="number" id="drift-start" placeholder="21122" onchange="resetLine()" style="max-width:140px;" /></label>
         <span class="file-meta" id="cursor-meta"></span>
       </div>
+      <div class="file-meta" style="margin-top:8px;">시연 데이터: 정상 = sample_moldweight.csv 끝부분(실험 20), 공정 변경 = drift_shots_23.csv의 금형온도 70°C 구간(샷 21122~)</div>
       <div id="drift-result" class="result-box"></div>
     </details>
   </div>
@@ -259,9 +337,7 @@
   <!-- ================= 2. 파이프라인 ================= -->
   <div class="card">
     <div class="section-head-row">
-      <div class="section-head">
-        <h2><span class="step">2</span>재학습 파이프라인</h2>
-      </div>
+      <div class="section-head"><h2><span class="step">2</span>재학습 파이프라인</h2></div>
       <span class="pill neutral" id="pipeline-run-badge">아직 실행 안 함</span>
     </div>
     <div class="pipeline-track" id="pipeline-track"></div>
@@ -270,9 +346,7 @@
   <!-- ================= 3. 알람 + 로그 ================= -->
   <div class="card">
     <div class="section-head-row">
-      <div class="section-head">
-        <h2><span class="step">3</span>운영 알람 <span class="pill neutral" style="font-weight:600;">logs/aiops.log</span></h2>
-      </div>
+      <div class="section-head"><h2><span class="step">3</span>운영 알람 <span class="pill neutral" style="font-weight:600;">logs/aiops.log</span></h2></div>
       <button class="btn secondary small" onclick="loadAlarms()">새로고침</button>
     </div>
     <div class="alarm-list" id="alarm-list"><div class="empty">아직 알람이 없습니다</div></div>
@@ -311,25 +385,35 @@ const DRIFT_THRESHOLD = 0.3;
 // 공정 변경 파일(실험 23)에서 금형온도 70°C 구간이 시작되는 샷. 그 앞 구간(80·90°C)은
 // 현재 모델로도 RMSE 0.3 이내라 드리프트가 나지 않으므로 시연은 여기서 시작한다.
 const DRIFT_START_DEFAULT = 21122;
+// 시연용 샷 파일. static/ 아래에 두어 서버가 그대로 내준다 (data/의 복사본).
+const DEMO_FILES = { normal: "/demo/sample_moldweight.csv", drift: "/demo/drift_shots_23.csv" };
 
 const shotFiles = { normal: null, drift: null }; // { name, shots: [{cycle_counter, curve, actual_weight}] }
-let driftCursor = 0;        // 드리프트 파일에서 다음에 보낼 샷의 인덱스
-let sentShots = 0;          // 이 화면에서 보낸 샷 수 (재학습 샷 41개가 모였는지 표시용)
-let servingVersion = null;  // /predict 응답의 model_version (실제 서빙 중인 버전)
-let lastPipelineRun = null; // { driftCheck, clientRmse, ts, versionBefore, versionAfter }
+const cursor = { normal: 0, drift: 0 };          // 각 파일에서 다음에 보낼 샷의 인덱스
+let cond = "normal";                             // 지금 선택된 조건
+let running = false;                             // 라인 가동 중인가
+let sentShots = 0;                               // 실측 비교한 샷 수 (재학습 샷 41개가 모였는지 표시용)
+let streamed = 0;                                // 라인 가동으로 흘린 샷 수 (검사 간격 계산용)
+let windowFill = 0;                              // 서버 판정 윈도우에 쌓인 실측 수 (응답의 window)
+let servingVersion = null;                       // /predict 응답의 model_version (실제 서빙 중인 버전)
+let lastPipelineRun = null;                      // { driftCheck, ts, versionBefore, versionAfter }
+const feed = [];                                 // 최근 샷 표
+// 분기점 멈춤: 감지·게이트 실패·배포 순간에 라인을 멈추고 발표자가 "계속"을 누를 때까지 기다린다.
+let paused = false;
+let resumeResolver = null;
+// 모델 판정 신뢰: 드리프트가 감지된 뒤 새 모델이 게이트를 통과할 때까지는 예측값을 품질 판정에 쓰지 않는다
+// (운영 정책: 전수검사 전환). 서버 응답(status·rmse·promoted)만으로 화면이 판단한다.
+let trust = true;
+let driftSeen = false;                           // 이번 드리프트에서 감지 분기점을 이미 보여줬는가
 
 const PIPELINE_STAGES = ["데이터 수집", "모니터링", "드리프트 감지", "재학습 트리거", "모델 학습", "게이트·등록", "배포"];
 const ZERO_CURVE = Array.from({ length: CURVE_LEN }, () => [0, 0]); // 서빙 버전 확인용 (값 범위 안의 유효한 곡선)
 
 /* ===================== 테마 ===================== */
-function isDark() {
-  const t = document.documentElement.getAttribute("data-theme");
-  return t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches);
-}
+function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
 function applyTheme(theme) {
-  const root = document.documentElement;
-  if (theme) root.setAttribute("data-theme", theme); else root.removeAttribute("data-theme");
-  document.getElementById("theme-btn").textContent = isDark() ? "라이트" : "다크";
+  document.documentElement.setAttribute("data-theme", theme);
+  document.getElementById("theme-btn").textContent = theme === "dark" ? "라이트" : "다크";
 }
 function toggleTheme() {
   const next = isDark() ? "light" : "dark";
@@ -339,17 +423,10 @@ function toggleTheme() {
 function initTheme() {
   let saved = null;
   try { saved = localStorage.getItem("mw-theme"); } catch (e) { /* 무시 */ }
-  applyTheme(saved === "dark" || saved === "light" ? saved : null);
+  applyTheme(saved === "dark" ? "dark" : "light");
 }
 
 /* ===================== 유틸 ===================== */
-function rmseOf(actual, predicted) {
-  const n = Math.min(actual.length, predicted.length);
-  if (n === 0) return null;
-  let sum = 0;
-  for (let i = 0; i < n; i++) sum += (actual[i] - predicted[i]) ** 2;
-  return Math.sqrt(sum / n);
-}
 function fmt(x, digits = 3) { return typeof x === "number" ? x.toFixed(digits) : "-"; }
 function relTime(ts) {
   if (!ts) return "-";
@@ -359,6 +436,7 @@ function relTime(ts) {
   return `${Math.floor(diff / 3600)}시간 전`;
 }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 async function getJSON(path) {
   const res = await fetch(path);
   const data = await res.json().catch(() => null);
@@ -369,12 +447,17 @@ async function safeJson(res) {
   const text = await res.text();
   try { return JSON.parse(text); } catch (e) { return { __raw: text || "(응답 없음)" }; }
 }
+async function postJSON(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return { ok: res.ok, status: res.status, data: await safeJson(res) };
+}
 function showResult(el, obj, isError = false) {
   el.classList.add("show");
   el.style.borderColor = isError ? "var(--err)" : "var(--border)";
   el.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
 function pill(level, text, big = false) { return `<span class="pill ${level}${big ? " big" : ""}"><span class="dot"></span>${text}</span>`; }
+function setStatus(level, text) { document.getElementById("drift-status").innerHTML = pill(level, text, true); }
 
 /* ===================== 서빙 상태 (health, 실제 서빙 버전) ===================== */
 async function refreshServing() {
@@ -394,16 +477,22 @@ async function refreshServing() {
   versionEl.innerHTML = `<span class="dot"></span>서빙 모델 v${v ?? "?"}`;
   return v;
 }
+// 서빙 중인 모델 버전 상자. 재학습 직후에는 전/후를 함께 보여주고 교체(초록)·유지(주황)를 색으로 구분한다.
+function renderVersion(before, after, promoted) {
+  const box = document.getElementById("version-box");
+  const ver = document.getElementById("kv-version");
+  const note = document.getElementById("version-note");
+  if (after == null) { box.className = "version-box"; ver.textContent = `v${before ?? "?"}`; note.textContent = "MLflow Production"; return; }
+  ver.textContent = `v${before ?? "?"} → v${after ?? "?"}`;
+  box.className = `version-box ${promoted ? "changed" : "kept"}`;
+  note.textContent = promoted ? "게이트 통과 · 새 모델로 교체" : "게이트 실패 · 기존 모델 유지";
+}
 async function fetchServingVersion() {
   const sample = shotFiles.drift?.shots[0] || shotFiles.normal?.shots[0];
-  const curve = sample ? sample.curve : ZERO_CURVE;
-  try {
-    const res = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ curve }) });
-    const data = await safeJson(res);
-    if (!res.ok) return null;
-    servingVersion = data.model_version;
-    return servingVersion;
-  } catch (e) { return null; }
+  const { ok, data } = await postJSON("/predict", { curve: sample ? sample.curve : ZERO_CURVE });
+  if (!ok) return null;
+  servingVersion = data.model_version;
+  return servingVersion;
 }
 
 /* ===================== 데이터 업로드 ===================== */
@@ -426,7 +515,7 @@ async function uploadFile() {
   }
 }
 
-/* ===================== 샷 CSV 읽기 (브라우저) ===================== */
+/* ===================== 샷 CSV 읽기 ===================== */
 function parseShotCsv(text) {
   // 한 행 = 샷 하나. 컬럼 cycle_counter, weight, inj_000~inj_127, cav_000~cav_127 (experiment는 선택).
   const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim().length);
@@ -451,60 +540,289 @@ function parseShotCsv(text) {
   shots.sort((a, b) => a.cycle_counter - b.cycle_counter);
   return shots;
 }
+function setShots(kind, name, shots) {
+  shotFiles[kind] = { name, shots };
+  document.getElementById(`${kind}-meta`).textContent = `${name} · ${shots.length}샷 · ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
+  resetLine();
+}
+async function loadDemoFiles() {
+  // static/demo/ 아래 복사본을 자동으로 읽는다. 없으면 파일 선택으로 넣을 수 있다.
+  for (const kind of ["normal", "drift"]) {
+    try {
+      const res = await fetch(DEMO_FILES[kind]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setShots(kind, DEMO_FILES[kind].split("/").pop(), parseShotCsv(await res.text()));
+    } catch (e) {
+      document.getElementById(`${kind}-meta`).textContent = `자동 로드 실패 (${e.message}) · 파일을 선택하세요`;
+    }
+  }
+}
 function loadShotFile(kind, input) {
-  const metaEl = document.getElementById(`${kind}-meta`);
   if (!input.files.length) return;
   const file = input.files[0];
   const reader = new FileReader();
   reader.onload = () => {
-    try {
-      const shots = parseShotCsv(reader.result);
-      shotFiles[kind] = { name: file.name, shots };
-      metaEl.textContent = `${shots.length}샷 · ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
-      resetCursor();
-    } catch (e) {
-      shotFiles[kind] = null;
-      metaEl.textContent = `읽기 실패: ${e.message}`;
-      resetCursor();
-    }
+    try { setShots(kind, file.name, parseShotCsv(reader.result)); }
+    catch (e) { shotFiles[kind] = null; document.getElementById(`${kind}-meta`).textContent = `읽기 실패: ${e.message}`; resetLine(); }
   };
   reader.readAsText(file);
 }
-// 한 배치 = 판정 윈도우(WINDOW_SIZE). 배치 하나를 보내면 드리프트 판정이 정확히 한 번 돌아간다.
-function batchSize() { return WINDOW_SIZE; }
+
+/* ===================== 라인 상태 ===================== */
+function interval() { return parseInt(document.getElementById("interval").value, 10); }
+function speed() { return parseInt(document.getElementById("speed").value, 10); }
 function driftStart() {
   const v = parseInt(document.getElementById("drift-start").value, 10);
   return Number.isFinite(v) ? v : DRIFT_START_DEFAULT;
 }
-function resetCursor() {
-  const drift = shotFiles.drift;
-  driftCursor = 0;
-  if (drift) {
-    const idx = drift.shots.findIndex((s) => s.cycle_counter >= driftStart());
-    driftCursor = idx < 0 ? drift.shots.length : idx;
-  }
+function selectCond(kind) {
+  if (running) return;
+  cond = kind;
+  document.getElementById("cond-normal").classList.toggle("active", kind === "normal");
+  document.getElementById("cond-drift").classList.toggle("active", kind === "drift");
+  updateProgress();
+}
+function resetLine() {
+  // 커서와 화면 카운터만 초기화한다. 서버의 판정 윈도우·재학습 기록은 서버를 다시 띄워야 비워진다.
+  stopRun();
+  const n = shotFiles.normal, d = shotFiles.drift;
+  // 정상 조건: 파일 끝의 (실측 21건 × 검사 간격)샷만 흘려도 판정 한 번이 나오게 시작점을 잡는다.
+  cursor.normal = n ? Math.max(0, n.shots.length - WINDOW_SIZE * interval()) : 0;
+  cursor.drift = 0;
+  if (d) { const i = d.shots.findIndex((s) => s.cycle_counter >= driftStart()); cursor.drift = i < 0 ? d.shots.length : i; }
+  streamed = 0; sentShots = 0; windowFill = 0; feed.length = 0; lastPipelineRun = null;
+  trust = true; driftSeen = false; hideBanner(); renderTrust();
+  renderPipeline(); renderLive(null, null); renderFeed();
+  document.getElementById("kv-rmse").textContent = "-"; document.getElementById("kv-rmse").className = "v";
+  document.getElementById("drift-status").innerHTML = "";
+  renderVersion(servingVersion, null);
   updateProgress();
 }
 function updateProgress() {
-  const n = batchSize();
-  const normal = shotFiles.normal, drift = shotFiles.drift;
-  const btnN = document.getElementById("btn-normal"), btnD = document.getElementById("btn-drift");
-  btnN.disabled = !normal;
-  btnD.disabled = !drift || driftCursor >= drift.shots.length;
-  document.getElementById("normal-progress").textContent = normal
-    ? `보낼 샷: ${normal.shots[normal.shots.length - n].cycle_counter}~${normal.shots[normal.shots.length - 1].cycle_counter} (파일 마지막 ${n}개)`
-    : "파일을 먼저 선택하세요";
-  const cursorEl = document.getElementById("cursor-meta");
-  if (!drift) { document.getElementById("drift-progress").textContent = "파일을 먼저 선택하세요"; cursorEl.textContent = ""; return; }
-  const next = drift.shots.slice(driftCursor, driftCursor + n);
-  const startIdx = drift.shots.findIndex((s) => s.cycle_counter >= driftStart());
-  const total = Math.ceil((drift.shots.length - Math.max(startIdx, 0)) / n);
-  const done = Math.round((driftCursor - Math.max(startIdx, 0)) / n);
-  const text = next.length
-    ? `다음: 샷 ${next[0].cycle_counter}~${next[next.length - 1].cycle_counter} (${done + 1}/${total} 배치)`
-    : "파일 끝까지 보냈습니다 · 아래 '처음 샷으로 되돌리기'";
-  document.getElementById("drift-progress").textContent = text;
-  cursorEl.textContent = `시작 샷 ${driftStart()} · ${text}`;
+  const n = shotFiles.normal, d = shotFiles.drift;
+  const file = shotFiles[cond];
+  document.getElementById("btn-run").disabled = running ? false : !(file && cursor[cond] < file.shots.length);
+  document.getElementById("btn-batch-normal").disabled = running || !n || cursor.normal >= n.shots.length;
+  document.getElementById("btn-batch-drift").disabled = running || !d || cursor.drift >= d.shots.length;
+  // 진행 위치는 접힌 영역에만 작게 표시한다 (시연 화면에서는 보이지 않음).
+  const pos = (f, c) => f ? (c < f.shots.length ? `다음 샷 ${f.shots[c].cycle_counter} · 남은 ${f.shots.length - c}` : "끝") : "없음";
+  document.getElementById("cursor-meta").textContent = `정상 ${pos(n, cursor.normal)} · 공정 변경 ${pos(d, cursor.drift)}`;
+}
+
+/* ===================== 라인 가동 (샷 한 개씩) ===================== */
+function toggleRun() { if (paused) resumeRun(); else if (running) stopRun(); else startRun(); }
+function stopRun() {
+  running = false;
+  if (paused) { paused = false; hideBanner(); if (resumeResolver) { resumeResolver(); resumeResolver = null; } }
+  const b = document.getElementById("btn-run");
+  b.textContent = "▶ 라인 가동"; b.className = "btn primary";
+  document.getElementById("cond-normal").disabled = false;
+  document.getElementById("cond-drift").disabled = false;
+  updateProgress();
+}
+async function startRun() {
+  const file = shotFiles[cond];
+  if (!file || cursor[cond] >= file.shots.length) return;
+  running = true;
+  const b = document.getElementById("btn-run");
+  b.textContent = "⏸ 정지"; b.className = "btn danger";
+  document.getElementById("cond-normal").disabled = true;
+  document.getElementById("cond-drift").disabled = true;
+  const label = cond === "normal" ? "정상 생산" : "공정 변경";
+  setStatus("neutral", `${label} 라인 가동 중 · 검사 간격 ${interval()}샷`);
+  while (running && cursor[cond] < file.shots.length) {
+    const shot = file.shots[cursor[cond]++];
+    streamed++;
+    const sampled = streamed % interval() === 0;
+    try {
+      if (sampled) {
+        const { stop, events } = await inspectShot(shot, label);
+        for (const ev of events) {
+          if (document.getElementById("pause-at-branch").checked) await pauseAt(ev);
+          if (!running) break;
+        }
+        if (stop || !running) break;
+      } else {
+        const { ok, data } = await postJSON("/predict", { curve: shot.curve });
+        if (!ok) { setStatus("err", `서버 오류 (HTTP ${data.status ?? "?"})`); break; }
+        pushFeed(shot, data.predicted_weight, false);
+        renderLive(shot, data.predicted_weight);
+      }
+    } catch (e) {
+      setStatus("err", `연결 실패: ${escapeHtml(e.message)}`); break;
+    }
+    updateProgress();
+    await sleep(speed());
+  }
+  stopRun();
+}
+// 실측이 붙은 샷 하나를 /predict/batch-test로 보내 예측·판정을 받는다. 정상 조건에서 판정이 한 번 나오면 멈춘다.
+async function inspectShot(shot, label) {
+  const versionBefore = servingVersion;
+  const { ok, status, data } = await postJSON("/predict/batch-test", { shots: [shot] });
+  if (!ok) { setStatus("err", `${data.__raw ? "서버 오류" : "요청 거부"} (HTTP ${status})`); showResult(document.getElementById("drift-result"), { status, detail: data }, true); return { stop: true, events: [] }; }
+  sentShots++;
+  const predicted = (data.predictions || [])[0];
+  const check = data.drift_check || {};
+  pushFeed(shot, predicted, true);
+  renderLive(shot, predicted);
+  const events = await applyCheck(check, versionBefore, label, `샷 ${shot.cycle_counter}`);
+  showResult(document.getElementById("drift-result"), data, false);
+  // 정상 조건은 "정상" 판정이 한 번 나오면 멈춰서 다음 단계(공정 변경)로 넘어가게 한다.
+  return { stop: cond === "normal" && check.status === "ok", events };
+}
+
+/* ===================== 분기점 멈춤 ===================== */
+const BRANCH = {
+  normal_ok:      { level: "ok",   title: "정상 판정",            why: "실측 21건의 평균 오차가 0.3 g 이하. 모델 판정을 그대로 씁니다." },
+  drift_detected: { level: "warn", title: "드리프트 감지",         why: "최근 실측 21건의 오차가 0.3 g을 넘었습니다. 지금부터 모델 판정은 쓰지 않고 전수검사로 전환합니다. 바뀐 조건에서 실측된 샷이 41개 모이면 재학습합니다." },
+  gate_failed:    { level: "err",  title: "재학습 → 게이트 실패",  why: "재학습한 모델이 기준(0.3 g)을 넘지 못했습니다. 기존 모델을 유지하고 전수검사도 유지합니다. 다음 41샷으로 다시 시도합니다." },
+  promoted:       { level: "ok",   title: "재학습 → 게이트 통과 → 배포", why: "새 모델이 기준을 통과해 서빙 모델이 교체됐습니다. 모델 판정으로 복귀하고 전수검사를 해제합니다." },
+};
+function showBanner(ev, num) {
+  const b = document.getElementById("banner");
+  b.className = `banner show ${BRANCH[ev].level}`;
+  document.getElementById("banner-title").textContent = BRANCH[ev].title;
+  document.getElementById("banner-num").textContent = num;
+  document.getElementById("banner-why").textContent = BRANCH[ev].why;
+  document.getElementById("banner-btn").style.display = ev === "normal_ok" || !running ? "none" : ""; // 계속 버튼은 라인이 멈춘 상태에서만
+  b.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function hideBanner() { document.getElementById("banner").className = "banner"; }
+function pauseAt(ev) {
+  if (ev.kind === "normal_ok") { showBanner("normal_ok", ev.num); return Promise.resolve(); }
+  showBanner(ev.kind, ev.num);
+  paused = true;
+  const b = document.getElementById("btn-run");
+  b.textContent = "▶ 계속"; b.className = "btn primary";
+  return new Promise((resolve) => { resumeResolver = resolve; });
+}
+function resumeRun() {
+  if (!paused) return;
+  paused = false; hideBanner();
+  const b = document.getElementById("btn-run");
+  b.textContent = "⏸ 정지"; b.className = "btn danger";
+  if (resumeResolver) { resumeResolver(); resumeResolver = null; }
+}
+function renderTrust() {
+  document.getElementById("trust-strip").className = `trust${trust ? "" : " show"}`;
+  document.getElementById("now-sub").textContent = trust ? "예측 무게 (g)" : "예측 무게 (g) · 판정에 쓰지 않음";
+}
+
+/* ===================== 21샷 묶음 전송 (보조) ===================== */
+async function sendBatch(kind) {
+  const file = shotFiles[kind];
+  if (!file) return;
+  const shots = kind === "normal"
+    ? file.shots.slice(cursor.normal, cursor.normal + WINDOW_SIZE)
+    : file.shots.slice(cursor.drift, cursor.drift + WINDOW_SIZE);
+  if (!shots.length) { setStatus("warn", "보낼 샷이 없습니다 · ↺ 처음부터"); return; }
+  cursor[kind] += shots.length;
+  const label = kind === "normal" ? "정상 생산" : "공정 변경";
+  const range = `샷 ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
+  const versionBefore = servingVersion;
+  document.getElementById("btn-batch-normal").disabled = document.getElementById("btn-batch-drift").disabled = true;
+  setStatus("warn", `${label} ${range} 전송 중… (재학습이 돌면 몇 초 걸립니다)`);
+  try {
+    const { ok, status, data } = await postJSON("/predict/batch-test", { shots });
+    if (!ok) { setStatus("err", `${data.__raw ? "서버 오류" : "요청 거부"} (HTTP ${status})`); showResult(document.getElementById("drift-result"), { status, detail: data }, true); return; }
+    sentShots += shots.length;
+    shots.forEach((s, i) => pushFeed(s, (data.predictions || [])[i], true));
+    renderLive(shots[shots.length - 1], (data.predictions || [])[shots.length - 1]);
+    const events = await applyCheck(data.drift_check || {}, versionBefore, label, range);
+    // 묶음 전송은 라인이 돌지 않으므로 멈출 게 없고, 마지막 분기점만 배너로 보여준다.
+    if (events.length) showBanner(events[events.length - 1].kind, events[events.length - 1].num);
+    showResult(document.getElementById("drift-result"), data, false);
+  } catch (e) {
+    setStatus("err", `연결 실패: ${escapeHtml(e.message)}`);
+  } finally {
+    updateProgress();
+  }
+}
+
+/* ===================== 판정 결과 반영 (라인 가동·묶음 공용) ===================== */
+// drift_check를 7단계 상태로 바꾼다. status는 collecting | ok | retrain_triggered 세 가지인데,
+// collecting에 rmse가 실려 있으면 "드리프트는 감지됐지만 재학습 샷(41개)이 부족해 보류"된 상태다.
+function classify(check) {
+  const { status, rmse, promoted } = check;
+  if (status === "retrain_triggered") return promoted ? "promoted" : "gate_failed";
+  if (status === "ok") return "ok";
+  if (status === "collecting") return typeof rmse === "number" && rmse > DRIFT_THRESHOLD ? "drift_waiting" : "collecting";
+  return "unknown";
+}
+async function applyCheck(check, versionBefore, label, where) {
+  const kind = classify(check);
+  // 재학습이 돌았으면 /predict로 실제 서빙 버전이 바뀌었는지 확인한다 (Registry 버전과 별개).
+  let versionAfter = versionBefore;
+  if (check.status === "retrain_triggered") versionAfter = await refreshServing();
+  windowFill = check.status === "retrain_triggered" ? 0 : (check.window ?? windowFill); // 재학습 후 서버가 윈도우를 비움
+  lastPipelineRun = { driftCheck: check, ts: Date.now() / 1000, versionBefore, versionAfter };
+  renderPipeline();
+  renderWindow(check);
+  loadAlarms();
+  loadLogFiles();
+  const r = fmt(check.rmse);
+  const n = Math.min(sentShots, RETRAIN_SHOTS);
+  const msg = {
+    ok:            ["ok",      `${label} ${where}: 정상 · 실측 21건 오차 ${r} g ≤ 0.3 g`],
+    collecting:    ["neutral", `${label} ${where}: 실측 ${check.window}/${WINDOW_SIZE}건 수집 중`],
+    drift_waiting: ["warn",    `${label} ${where}: 드리프트 감지 (오차 ${r} g) · 재학습 샷 ${n}/${RETRAIN_SHOTS}, 더 모으는 중`],
+    gate_failed:   ["warn",    `${label} ${where}: 드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 실패 → v${check.model_version} 유지`],
+    promoted:      ["ok",      `${label} ${where}: 드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 통과 → v${check.model_version} 배포`],
+    unknown:       ["err",     `알 수 없는 status: ${escapeHtml(check.status)}`],
+  }[kind];
+  setStatus(msg[0], msg[1]);
+  if (check.status === "retrain_triggered") renderVersion(versionBefore, versionAfter, !!check.promoted);
+  // 분기점과 신뢰 상태. 드리프트는 처음 감지된 순간 한 번만 분기점으로 잡는다 (WARN은 실측마다 반복되므로).
+  const events = [];
+  if (kind === "ok" && cond === "normal") events.push({ kind: "normal_ok", num: `${r} g` });
+  if ((kind === "drift_waiting" || kind === "gate_failed" || kind === "promoted") && !driftSeen) {
+    driftSeen = true; trust = false;
+    events.push({ kind: "drift_detected", num: `${r} g > 0.3 g` });
+  }
+  if (kind === "gate_failed") events.push({ kind: "gate_failed", num: `v${check.model_version} 유지` });
+  if (kind === "promoted") { trust = true; driftSeen = false; events.push({ kind: "promoted", num: `v${versionBefore ?? "?"} → v${versionAfter ?? "?"}` }); }
+  renderTrust();
+  return events;
+}
+
+/* ===================== 화면 ===================== */
+function renderLive(shot, predicted) {
+  document.getElementById("now-shot").textContent = shot ? `샷 ${shot.cycle_counter}` : "-";
+  document.getElementById("now-pred").textContent = typeof predicted === "number" ? fmt(predicted, 2) : "-";
+  document.getElementById("now-sub").textContent = trust ? "예측 무게 (g)" : "예측 무게 (g) · 판정에 쓰지 않음";
+  document.getElementById("kv-shots").textContent = `${Math.min(sentShots, RETRAIN_SHOTS)} / ${RETRAIN_SHOTS}`;
+  document.getElementById("kv-shots").className = `v ${sentShots >= RETRAIN_SHOTS ? "ok" : ""}`;
+  document.getElementById("win-n").textContent = windowFill;
+  document.getElementById("win-bar").firstElementChild.style.width = `${Math.min(100, windowFill / WINDOW_SIZE * 100)}%`;
+}
+function renderWindow(check) {
+  const rmseEl = document.getElementById("kv-rmse");
+  const bar = document.getElementById("win-bar");
+  const over = typeof check.rmse === "number" && check.rmse > DRIFT_THRESHOLD;
+  rmseEl.textContent = typeof check.rmse === "number" ? `${fmt(check.rmse)} g` : `수집 중`;
+  rmseEl.className = `v ${typeof check.rmse !== "number" ? "" : over ? "warn" : "ok"}`;
+  bar.className = `bar ${typeof check.rmse !== "number" ? "" : over ? "warn" : "ok"}`;
+  document.getElementById("win-n").textContent = windowFill;
+  bar.firstElementChild.style.width = `${Math.min(100, windowFill / WINDOW_SIZE * 100)}%`;
+}
+function pushFeed(shot, predicted, sampled) {
+  feed.push({ shot, predicted, sampled, trusted: trust });
+  if (feed.length > 10) feed.shift();
+  renderFeed();
+}
+function renderFeed() {
+  const body = document.getElementById("feed");
+  if (!feed.length) { body.innerHTML = `<tr><td class="muted" colspan="4">아직 없음</td></tr>`; return; }
+  body.innerHTML = feed.slice().reverse().map(({ shot, predicted, sampled, trusted }) => {
+    const err = sampled && typeof predicted === "number" ? Math.abs(shot.actual_weight - predicted) : null;
+    return `<tr class="${sampled ? "sampled" : ""}${trusted ? "" : " untrusted"}">
+      <td>${shot.cycle_counter}</td>
+      <td class="pred">${fmt(predicted, 2)}${trusted ? "" : " ?"}</td>
+      <td class="${sampled ? "" : "muted"}">${sampled ? fmt(shot.actual_weight, 2) : "안 잼"}</td>
+      <td class="${err != null && err > DRIFT_THRESHOLD ? "err" : ""}">${err == null ? "" : fmt(err, 2)}</td>
+    </tr>`;
+  }).join("");
 }
 
 /* ===================== 알람 목록 + 로그 원문 ===================== */
@@ -544,15 +862,6 @@ async function openLogFile(name) {
 }
 
 /* ===================== 파이프라인 시각화 ===================== */
-// drift_check를 7단계 상태로 바꾼다. status는 collecting | ok | retrain_triggered 세 가지인데,
-// collecting에 rmse가 실려 있으면 "드리프트는 감지됐지만 재학습 샷(41개)이 부족해 보류"된 상태다.
-function classify(check) {
-  const { status, rmse, promoted } = check;
-  if (status === "retrain_triggered") return promoted ? "promoted" : "gate_failed";
-  if (status === "ok") return "ok";
-  if (status === "collecting") return typeof rmse === "number" && rmse > DRIFT_THRESHOLD ? "drift_waiting" : "collecting";
-  return "unknown";
-}
 function renderPipeline() {
   const track = document.getElementById("pipeline-track");
   const badge = document.getElementById("pipeline-run-badge");
@@ -563,8 +872,7 @@ function renderPipeline() {
   }
   const { driftCheck, ts } = lastPipelineRun;
   badge.className = "pill neutral";
-  badge.textContent = `마지막 실행 ${relTime(ts)}`;
-
+  badge.textContent = `마지막 판정 ${relTime(ts)}`;
   const kind = classify(driftCheck);
   const states = {
     collecting:    ["ok", "warn", "idle", "idle", "idle", "idle", "idle"],
@@ -594,104 +902,16 @@ function stageHtml(title, idx, state, statusLabel) {
     </div>`;
 }
 
-/* ===================== 결과 타일 ===================== */
-function renderStats(check, clientRmse, versionBefore, versionAfter) {
-  document.getElementById("stat-row").style.display = "";
-  const windowRmse = typeof check.rmse === "number" ? check.rmse : null;
-  const b = document.getElementById("stat-batch");
-  b.textContent = `${fmt(clientRmse)} g`;
-  b.className = `v ${clientRmse != null && clientRmse > DRIFT_THRESHOLD ? "warn" : "ok"}`;
-  const w = document.getElementById("stat-window");
-  w.textContent = windowRmse == null ? `${check.window}/${WINDOW_SIZE} 수집` : `${fmt(windowRmse)} g`;
-  w.className = `v ${windowRmse == null ? "" : windowRmse > DRIFT_THRESHOLD ? "warn" : "ok"}`;
-  const s = document.getElementById("stat-shots");
-  const n = Math.min(sentShots, RETRAIN_SHOTS);
-  s.textContent = `${n} / ${RETRAIN_SHOTS}`;
-  s.className = `v ${n >= RETRAIN_SHOTS ? "ok" : ""}`;
-  const v = document.getElementById("stat-version");
-  if (check.status === "retrain_triggered") {
-    v.textContent = `v${versionBefore ?? "?"} → v${versionAfter ?? "?"}`;
-    v.className = `v ${versionAfter !== versionBefore ? "ok" : "warn"}`;
-  } else {
-    v.textContent = `v${servingVersion ?? "?"}`;
-    v.className = "v";
-  }
-}
-
-/* ===================== 배치 전송 ===================== */
-function nextBatch(kind) {
-  const n = batchSize();
-  if (kind === "normal") return shotFiles.normal.shots.slice(-n); // 정상 파일의 마지막 n샷 (학습에 쓰이지 않은 검증 구간)
-  const batch = shotFiles.drift.shots.slice(driftCursor, driftCursor + n);
-  driftCursor += batch.length;
-  return batch;
-}
-function describe(check) {
-  const r = fmt(check.rmse);
-  switch (classify(check)) {
-    case "ok":            return ["ok", `정상 · 오차 ${r} g ≤ 0.3`];
-    case "collecting":    return ["neutral", `판정 대기 · 샷 ${check.window}/${WINDOW_SIZE} 수집 중`];
-    case "drift_waiting": return ["warn", `드리프트 감지 (오차 ${r} g) · 재학습 샷 부족 ${Math.min(sentShots, RETRAIN_SHOTS)}/${RETRAIN_SHOTS} → 한 번 더 보내세요`];
-    case "gate_failed":   return ["warn", `드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 실패 → v${check.model_version} 유지`];
-    case "promoted":      return ["ok", `드리프트 감지 (오차 ${r} g) → 재학습 → 게이트 통과 → v${check.model_version} 배포`];
-    default:              return ["err", `알 수 없는 status: ${escapeHtml(check.status)}`];
-  }
-}
-async function sendBatch(kind) {
-  const statusEl = document.getElementById("drift-status");
-  const resultBox = document.getElementById("drift-result");
-  const btnN = document.getElementById("btn-normal"), btnD = document.getElementById("btn-drift");
-  if (!shotFiles[kind]) return;
-  const shots = nextBatch(kind);
-  if (!shots.length) { statusEl.innerHTML = pill("warn", "보낼 샷이 없습니다 · 아래 '처음 샷으로 되돌리기'"); return; }
-  updateProgress();
-  const label = kind === "normal" ? "정상" : "공정 변경";
-  const range = `샷 ${shots[0].cycle_counter}~${shots[shots.length - 1].cycle_counter}`;
-  const versionBefore = servingVersion;
-
-  btnN.disabled = btnD.disabled = true;
-  statusEl.innerHTML = pill("warn", `${label} ${range} 전송 중… (재학습이 돌면 몇 초 걸립니다)`, true);
-  try {
-    const res = await fetch("/predict/batch-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shots }) });
-    const data = await safeJson(res);
-    if (!res.ok) {
-      statusEl.innerHTML = pill("err", `${data.__raw ? "서버 오류" : "요청 거부"} (HTTP ${res.status})`, true);
-      showResult(resultBox, { status: res.status, detail: data }, true);
-      return;
-    }
-    sentShots += shots.length;
-    const clientRmse = rmseOf(shots.map((s) => s.actual_weight), data.predictions || []);
-    const check = data.drift_check || {};
-
-    // 재학습이 돌았으면 /predict로 실제 서빙 버전이 바뀌었는지 확인한다 (Registry 버전과 별개).
-    let versionAfter = versionBefore;
-    if (check.status === "retrain_triggered") versionAfter = await refreshServing();
-
-    lastPipelineRun = { driftCheck: check, clientRmse, ts: Date.now() / 1000, versionBefore, versionAfter };
-    renderPipeline();
-    renderStats(check, clientRmse, versionBefore, versionAfter);
-    loadAlarms();
-    loadLogFiles();
-
-    const [level, text] = describe(check);
-    statusEl.innerHTML = pill(level, `${label} ${range}: ${text}`, true);
-    showResult(resultBox, data, false);
-  } catch (e) {
-    statusEl.innerHTML = pill("err", "연결 실패", true);
-    showResult(resultBox, "요청 실패: " + e.message, true);
-  } finally {
-    updateProgress();
-  }
-}
-
 /* ===================== 초기화 ===================== */
 async function init() {
   initTheme();
   renderPipeline();
+  renderFeed();
   loadAlarms();
   loadLogFiles();
-  updateProgress();
-  refreshServing();
+  await loadDemoFiles();
+  await refreshServing();
+  renderVersion(servingVersion, null);
 }
 init();
 </script>
