@@ -126,3 +126,101 @@ jobs:
       - name: Remove CI containers
         if: always()
         run: docker compose -f serving_app/docker-compose.yml down --remove-orphans
+
+  docker-trained:
+    name: Docker trained model and smoke
+    needs: docker-runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: moldweight-trained-ci
+      MOLDWEIGHT_BUILD_TARGET: trained
+      MODEL_SOURCE: mlflow
+      LOADING_MODE: eager
+      MOLDWEIGHT_PORT: "8000"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build trained image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: serving_app/Dockerfile
+          target: trained
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: moldweight-serving:trained
+          cache-from: |
+            type=gha,scope=moldweight-runtime-amd64
+            type=gha,scope=moldweight-trained-amd64
+          cache-to: type=gha,scope=moldweight-trained-amd64,mode=max,ignore-error=true
+
+      - name: Start server with the Production model
+        run: |
+          docker compose -f serving_app/docker-compose.yml up \
+            --no-build --pull never -d --wait --wait-timeout 90
+
+      - name: Verify the API uses the Registry version
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            serving-app python - <<'PY' | tee trained-model.log
+          import json
+          import os
+          from urllib.request import Request, urlopen
+
+          from data.features import load_rows
+          from mlflow.tracking import MlflowClient
+          from serving_app.config import MODEL_NAME
+
+          assert os.environ["MODEL_SOURCE"] == "mlflow"
+          assert os.environ["LOADING_MODE"] == "eager"
+          versions = MlflowClient().get_latest_versions(MODEL_NAME, stages=["Production"])
+          assert len(versions) == 1, versions
+          version = str(versions[0].version)
+          assert version.isdigit(), version
+          curve = load_rows("data/drift_shots_23.csv")[0]["curve"]
+          req = Request(
+              "http://127.0.0.1:8000/predict",
+              data=json.dumps({"curve": curve}, allow_nan=False).encode(),
+              headers={"Content-Type": "application/json"},
+          )
+          with urlopen(req, timeout=10) as response:
+              result = json.load(response)
+          assert result["model_version"] == version, result
+          print(f"Production version={version}; API prediction={result}")
+          PY
+
+      - name: Run RULES smoke checks and measure warm p95
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            -e P95_SAMPLES=100 serving-app bash scripts/smoke_test.sh \
+            | tee trained-smoke.log
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          log = Path("trained-model.log").read_text() + "\n" + Path("trained-smoke.log").read_text()
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write("### Trained model smoke and p95\n\n")
+              summary.write(f"Commit: `{os.environ['GITHUB_SHA']}`\n\n")
+              summary.write("Linux AMD64; MODEL_SOURCE=mlflow; LOADING_MODE=eager.\n\n")
+              summary.write("100 sequential /predict requests after the prediction smoke check; nearest-rank p95.\n\n")
+              summary.write(f"```text\n{log}\n```\n")
+          PY
+
+      - name: Show trained container logs on failure
+        if: failure()
+        run: |
+          docker compose -f serving_app/docker-compose.yml ps -a
+          docker compose -f serving_app/docker-compose.yml logs --no-color --tail 200
+
+      - name: Remove trained CI containers
+        if: always()
+        run: docker compose -f serving_app/docker-compose.yml down --remove-orphans
