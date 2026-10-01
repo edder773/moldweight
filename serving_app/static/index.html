@@ -411,6 +411,7 @@ const cursor = { normal: 0, drift: 0 };          // 각 파일에서 다음에 �
 const rangeStart = { normal: 0, drift: 0 };      // 각 조건의 시작 인덱스 (버튼 진행 막대 0% 지점)
 let cond = "normal";                             // 지금 선택된 조건
 let running = false;                             // 라인 가동 중인가
+let runId = 0;                                   // 가동 실행 번호. await 뒤에 현재 실행인지 확인해 옛 루프가 이어지지 않게 한다
 let sentShots = 0;                               // 실측 비교한 샷 수 (재학습 샷 41개가 모였는지 표시용)
 let streamed = 0;                                // 라인 가동으로 흘린 샷 수 (검사 간격 계산용)
 let windowFill = 0;                              // 서버 판정 윈도우에 쌓인 실측 수 (응답의 window)
@@ -637,6 +638,7 @@ function updateProgress() {
 function toggleRun() { if (paused) resumeRun(); else if (running) stopRun(); else startRun(); }
 function stopRun() {
   running = false;
+  runId++; // 진행 중이던 루프는 다음 await 뒤에 실행 번호가 달라진 것을 보고 조용히 끝난다
   if (paused) { paused = false; hideBanner(); if (resumeResolver) { resumeResolver(); resumeResolver = null; } }
   const b = document.getElementById("btn-run");
   b.textContent = "▶ 라인 가동"; b.className = "btn primary";
@@ -648,6 +650,8 @@ async function startRun() {
   const file = shotFiles[cond];
   if (!file || cursor[cond] >= file.shots.length) return;
   running = true;
+  const myRun = ++runId;
+  const mine = () => runId === myRun; // 정지 후 재가동되면 번호가 바뀌어 이 루프는 더 진행하지 않는다
   hideBanner(); // 이전 분기점 배너는 새 가동과 함께 지운다
   const b = document.getElementById("btn-run");
   b.textContent = "⏸ 정지"; b.className = "btn danger";
@@ -655,44 +659,51 @@ async function startRun() {
   document.getElementById("cond-drift").disabled = true;
   const label = cond === "normal" ? "정상 생산" : "공정 변경";
   setStatus("neutral", `${label} 라인 가동 중 · 검사 간격 ${interval()}샷`);
-  while (running && cursor[cond] < file.shots.length) {
+  while (mine() && running && cursor[cond] < file.shots.length) {
     const shot = file.shots[cursor[cond]++];
     streamed++;
     // 모델 판정을 신뢰할 수 없는 동안(드리프트 감지 ~ 새 모델 승격)은 전수검사: 검사 간격을 무시하고 모든 샷을 실측 비교한다.
     const sampled = !trust || streamed % interval() === 0;
     try {
       if (sampled) {
-        const { stop, events } = await inspectShot(shot, label);
+        const { stop, events } = await inspectShot(shot, label, myRun);
+        if (!mine()) return;
         for (const ev of events) {
           if (document.getElementById("pause-at-branch").checked) await pauseAt(ev);
-          if (!running) break;
+          if (!mine() || !running) break;
         }
+        if (!mine()) return;
         if (stop || !running) break;
       } else {
         const { ok, data } = await postJSON("/predict", { curve: shot.curve });
+        if (!mine()) return;
         if (!ok) { setStatus("err", `서버 오류 (HTTP ${data.status ?? "?"})`); break; }
         pushFeed(shot, data.predicted_weight, false);
         renderLive(shot, data.predicted_weight);
       }
     } catch (e) {
+      if (!mine()) return;
       setStatus("err", `연결 실패: ${escapeHtml(e.message)}`); break;
     }
     updateProgress();
     await sleep(speed());
   }
-  stopRun();
+  if (mine()) stopRun(); // 옛 루프라면 새 실행을 멈추지 않는다
 }
 // 실측이 붙은 샷 하나를 /predict/batch-test로 보내 예측·판정을 받는다. 정상 조건에서 판정이 한 번 나오면 멈춘다.
-async function inspectShot(shot, label) {
+// myRun: 호출한 가동 루프의 실행 번호. 응답을 기다리는 사이 정지·재가동됐으면 화면을 건드리지 않는다.
+async function inspectShot(shot, label, myRun = null) {
   const versionBefore = servingVersion;
   const { ok, status, data } = await postJSON("/predict/batch-test", { shots: [shot] });
+  if (myRun != null && myRun !== runId) return { stop: true, events: [] };
   if (!ok) { setStatus("err", `${data.__raw ? "서버 오류" : "요청 거부"} (HTTP ${status})`); showResult(document.getElementById("drift-result"), { status, detail: data }, true); return { stop: true, events: [] }; }
   sentShots++;
   const predicted = (data.predictions || [])[0];
   const check = data.drift_check || {};
   pushFeed(shot, predicted, true);
   renderLive(shot, predicted);
-  const events = await applyCheck(check, versionBefore, label, `샷 ${shot.cycle_counter}`);
+  const events = await applyCheck(check, versionBefore, label, `샷 ${shot.cycle_counter}`, myRun);
+  if (myRun != null && myRun !== runId) return { stop: true, events: [] };
   showResult(document.getElementById("drift-result"), data, false);
   // 정상 조건은 "정상" 판정이 한 번 나오면 멈춰서 다음 단계(공정 변경)로 넘어가게 한다.
   return { stop: cond === "normal" && check.status === "ok", events };
@@ -776,11 +787,12 @@ function classify(check) {
   if (status === "collecting") return typeof rmse === "number" && rmse > DRIFT_THRESHOLD ? "drift_waiting" : "collecting";
   return "unknown";
 }
-async function applyCheck(check, versionBefore, label, where) {
+async function applyCheck(check, versionBefore, label, where, myRun = null) {
   const kind = classify(check);
   // 재학습이 돌았으면 /predict로 실제 서빙 버전이 바뀌었는지 확인한다 (Registry 버전과 별개).
   let versionAfter = versionBefore;
   if (check.status === "retrain_triggered") versionAfter = await refreshServing();
+  if (myRun != null && myRun !== runId) return []; // 기다리는 사이 정지·재가동됐으면 옛 결과로 화면을 바꾸지 않는다
   windowFill = check.status === "retrain_triggered" ? 0 : (check.window ?? windowFill); // 재학습 후 서버가 윈도우를 비움
   lastPipelineRun = { driftCheck: check, where, versionBefore, versionAfter };
   renderPipeline();
