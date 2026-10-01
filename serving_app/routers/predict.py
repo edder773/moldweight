@@ -7,10 +7,15 @@ POST /predict/batch-test - 실측 무게가 붙은 샷 여러 개를 예측하�
 
 곡선 길이·채널 수·값 범위 검증은 serving_app/schemas.py에서 하고, 어긋나면 422입니다.
 """
+import math
 import os
 import threading
 
 from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
 from serving_app import model_loader
 from serving_app.config import RETRAIN_SHOTS, WINDOW_SIZE
@@ -22,7 +27,39 @@ from serving_app.schemas import (
     PredictResponse,
 )
 
-router = APIRouter()
+
+def _finite_only(value):
+    """inf/NaN을 문자열로 바꾼다. JSON은 이 값을 담을 수 없어 그대로 두면 응답 직렬화가 500이 된다."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _finite_only(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_finite_only(v) for v in value]
+    return value
+
+
+class _FiniteValidationRoute(APIRoute):
+    """1e400처럼 inf로 읽히는 값이 들어와도 422 오류 응답이 깨지지 않게 한다.
+
+    검증 오류의 "input"에 inf가 그대로 담겨 FastAPI 기본 422 응답이 500으로 바뀌는 것을 막는다.
+    응답 형태({"detail": [...]})는 FastAPI 기본 422와 같다.
+    """
+
+    def get_route_handler(self):
+        handler = super().get_route_handler()
+
+        async def route_handler(request):
+            try:
+                return await handler(request)
+            except RequestValidationError as exc:
+                detail = _finite_only(jsonable_encoder(exc.errors()))
+                return JSONResponse(status_code=422, content={"detail": detail})
+
+        return route_handler
+
+
+router = APIRouter(route_class=_FiniteValidationRoute)
 
 # RULES 5장 C ↔ D: 매 batch 끝에 두 리스트를 check_and_trigger에 넘긴다.
 recent_predictions: list[dict] = []  # [{"predicted", "actual"}], 최근 WINDOW_SIZE개
