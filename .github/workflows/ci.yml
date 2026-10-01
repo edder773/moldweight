@@ -215,6 +215,21 @@ jobs:
               summary.write(f"```text\n{log}\n```\n")
           PY
 
+      - name: Verify upload, drift, retraining and serving version changes
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            -e INTEGRATION_TEST=1 serving-app bash scripts/smoke_test.sh \
+            | tee trained-integration.log
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          log = Path("trained-integration.log").read_text()
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write("### Upload and drift integration\n\n")
+              summary.write(f"```text\n{log}\n```\n")
+          PY
+
       - name: Show trained container logs on failure
         if: failure()
         run: |
