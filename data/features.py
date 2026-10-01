@@ -25,6 +25,7 @@ __all__ = [
     "load_rows",
     "CurveScaler",
     "build_sequences",
+    "split_indices",
     "train_test_split",
 ]
 
@@ -153,6 +154,26 @@ def build_sequences(rows: list[dict], scaler: CurveScaler):
     return X, y
 
 
+def split_indices(rows: list[dict], test_ratio: float = 0.2) -> tuple[list[int], list[int]]:
+    """
+    train_test_split과 같은 규칙으로 나눈 인덱스만 돌려줍니다.
+
+    스케일러를 train 몫으로만 fit해야 할 때 씁니다. 분할보다 fit이 먼저 일어나면 검증
+    샷의 min/max가 정규화 기준에 섞여 들어가(누수) 검증 성능이 실제보다 좋게 나옵니다.
+    """
+    groups: dict[object, list[int]] = {}
+    for i, row in enumerate(rows):
+        groups.setdefault(row["experiment"], []).append(i)
+
+    train_idx: list[int] = []
+    test_idx: list[int] = []
+    for _, idx in sorted(groups.items(), key=lambda kv: (kv[0] is not None, kv[0])):
+        split_at = int(len(idx) * (1 - test_ratio))
+        train_idx += idx[:split_at]
+        test_idx += idx[split_at:]
+    return sorted(train_idx), sorted(test_idx)
+
+
 def train_test_split(X: list, y: list, rows: list[dict], test_ratio: float = 0.2):
     """
     실험별로 층화한 뒤 각 실험 안에서 시간순으로 앞을 train, 뒤를 test로 나눕니다.
@@ -165,19 +186,7 @@ def train_test_split(X: list, y: list, rows: list[dict], test_ratio: float = 0.2
     실험 안에서는 생산 순서를 유지하므로 같은 실험 내 미래 데이터 누수는 없습니다.
     experiment가 없는 업로드 CSV는 전체를 한 덩어리로 보고 시간순 분할합니다.
     """
-    groups: dict[object, list[int]] = {}
-    for i, row in enumerate(rows):
-        groups.setdefault(row["experiment"], []).append(i)
-
-    train_idx: list[int] = []
-    test_idx: list[int] = []
-    for _, idx in sorted(groups.items(), key=lambda kv: (kv[0] is not None, kv[0])):
-        split_at = int(len(idx) * (1 - test_ratio))
-        train_idx += idx[:split_at]
-        test_idx += idx[split_at:]
-
-    train_idx.sort()
-    test_idx.sort()
+    train_idx, test_idx = split_indices(rows, test_ratio)
     return (
         [X[i] for i in train_idx],
         [y[i] for i in train_idx],
