@@ -23,6 +23,9 @@ jobs:
     name: Python, Bash and Compose checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
+      trained: ${{ steps.scope.outputs.trained }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,6 +37,13 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
+
+      - name: Verify CI selection boundaries
+        run: python -m unittest discover -s scripts -p 'test_ci_scope.py' -v
+
+      - name: Select Docker checks
+        id: scope
+        run: python scripts/ci_scope.py
 
       - name: Check Python syntax
         run: python -m compileall -q data serving_app scripts
@@ -71,6 +81,7 @@ jobs:
   docker-runtime:
     name: Docker runtime build and startup
     needs: static-checks
+    if: needs.static-checks.outputs.runtime == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -85,8 +96,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Enable the containerd image store
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
+        with:
+          version: v28.0.4
+          daemon-config: |
+            {"features": {"containerd-snapshotter": true}}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker
 
       - name: Build runtime image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -98,8 +118,8 @@ jobs:
           load: true
           push: false
           tags: moldweight-serving:runtime
-          cache-from: type=gha,scope=moldweight-runtime-amd64
-          cache-to: type=gha,scope=moldweight-runtime-amd64,mode=max,ignore-error=true
+          cache-from: type=gha,scope=moldweight-runtime-amd64,timeout=2m
+          cache-to: type=gha,scope=moldweight-runtime-amd64,timeout=2m,mode=max,ignore-error=true
 
       - name: Report runtime image size
         run: |
@@ -149,6 +169,7 @@ jobs:
   docker-trained:
     name: Docker trained model and smoke
     needs: static-checks
+    if: needs.static-checks.outputs.trained == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -163,8 +184,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Enable the containerd image store
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
+        with:
+          version: v28.0.4
+          daemon-config: |
+            {"features": {"containerd-snapshotter": true}}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker
 
       - name: Build trained image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -177,9 +207,9 @@ jobs:
           push: false
           tags: moldweight-serving:trained
           cache-from: |
-            type=gha,scope=moldweight-runtime-amd64
-            type=gha,scope=moldweight-trained-amd64
-          cache-to: type=gha,scope=moldweight-trained-amd64,mode=max,ignore-error=true
+            type=gha,scope=moldweight-runtime-amd64,timeout=2m
+            type=gha,scope=moldweight-trained-amd64,timeout=2m
+          cache-to: type=gha,scope=moldweight-trained-amd64,timeout=2m,mode=max,ignore-error=true
 
       - name: Report trained image size
         run: |
