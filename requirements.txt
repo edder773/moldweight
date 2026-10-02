@@ -2,7 +2,9 @@ fastapi==0.141.1
 uvicorn[standard]==0.46.0
 pydantic==2.13.3
 numpy==2.4.4
-tensorflow==2.21.0
+# Linux AMD64 CI·서빙은 GPU 라이브러리가 없는 같은 버전의 CPU wheel을 사용합니다.
+tensorflow-cpu==2.21.0; sys_platform == "linux" and platform_machine == "x86_64"
+tensorflow==2.21.0; sys_platform != "linux" or platform_machine != "x86_64"
 mlflow==3.16.0
 requests==2.33.1
 python-multipart==0.0.20

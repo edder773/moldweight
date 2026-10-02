@@ -38,6 +38,20 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q data serving_app scripts
 
+      - name: Check dashboard JavaScript syntax
+        run: |
+          python3 - <<'PYJS'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          html = Path("serving_app/static/index.html").read_text()
+          scripts = re.findall(r"<script>([\s\S]*?)</script>", html)
+          assert scripts, "대시보드 inline script가 없습니다"
+          for script in scripts:
+              subprocess.run(["node", "--check"], input=script, text=True, check=True)
+          PYJS
+
       - name: Check Bash syntax
         run: |
           while IFS= read -r -d '' script; do
@@ -87,6 +101,11 @@ jobs:
           cache-from: type=gha,scope=moldweight-runtime-amd64
           cache-to: type=gha,scope=moldweight-runtime-amd64,mode=max,ignore-error=true
 
+      - name: Report runtime image size
+        run: |
+          image_bytes=$(docker image inspect --format '{{.Size}}' moldweight-serving:runtime)
+          printf '### runtime image\n\nSize: %s bytes\n\n' "$image_bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Start server and wait for Docker healthcheck
         run: |
           docker compose -f serving_app/docker-compose.yml up \
@@ -129,7 +148,7 @@ jobs:
 
   docker-trained:
     name: Docker trained model and smoke
-    needs: docker-runtime
+    needs: static-checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -162,10 +181,20 @@ jobs:
             type=gha,scope=moldweight-trained-amd64
           cache-to: type=gha,scope=moldweight-trained-amd64,mode=max,ignore-error=true
 
+      - name: Report trained image size
+        run: |
+          image_bytes=$(docker image inspect --format '{{.Size}}' moldweight-serving:trained)
+          printf '### trained image\n\nSize: %s bytes\n\n' "$image_bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Start server with the Production model
         run: |
           docker compose -f serving_app/docker-compose.yml up \
             --no-build --pull never -d --wait --wait-timeout 90
+
+      - name: Check trained dependencies
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            serving-app python -m pip check
 
       - name: Verify the API uses the Registry version
         run: |

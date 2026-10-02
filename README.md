@@ -184,12 +184,14 @@ BASE_URL=http://127.0.0.1:18085 P95_SAMPLES=100 bash scripts/smoke_test.sh
 
 ## CI
 
-GitHub Actions는 `main` push, `main` 대상 PR, 수동 실행에서 순서대로 확인합니다.
+GitHub Actions는 `main` push, `main` 대상 PR, 수동 실행에서 문법·설정 검사 후 runtime/trained Docker 검증을 병렬로 수행합니다.
 
-1. Python 3.11·Bash 문법, 커밋 공백 오류, runtime/trained Compose 설정.
+1. Python 3.11·Bash·대시보드 JavaScript 문법, 커밋 공백 오류, runtime/trained Compose 설정.
 2. Linux AMD64 runtime 이미지 빌드, 컨테이너 healthcheck, `/health`·`/`·`/docs`·`/logs` 응답, `pip check`.
 3. Linux AMD64 trained 이미지의 실제 학습·게이트·Production 로딩, Registry와 API 버전 일치, RULES smoke 3개 항목, 100회 warm 예측 p95.
 4. 새 trained 서버에서 업로드·드리프트·재학습·게이트·실제 서빙 버전 전환 통합 검증.
+
+Docker 베이스 이미지는 멀티 아키텍처 digest로 고정하며, Linux AMD64에서는 TensorFlow 2.21.0 CPU wheel을 사용합니다. trained 빌드는 학습 구간 스케일러를 준비하고 MLflow 모델을 한 번 학습합니다. 모델 학습 레이어는 화면·API 라우터·smoke 파일과 분리하여 해당 파일만 바뀌면 학습 결과를 캐시에서 재사용합니다. 데이터·모델 코드·설정 변경은 재학습합니다. 기본 로컬 baseline 명령의 학습 동작은 유지합니다.
 
 trained CI의 커밋·Production 버전·smoke·p95·통합 검증 결과는 실행 요약에 남습니다. CI의 p95는 컨테이너 내부 loopback에서 측정하므로 위 호스트 → Docker 실측과 측정 경로가 다릅니다. 고정 p95 합격 기준은 설정하지 않았습니다. 이미지를 배포하거나 Registry에 push하지 않으며, 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
 
