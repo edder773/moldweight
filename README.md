@@ -173,7 +173,7 @@ CSV 필수 컬럼은 `cycle_counter, weight, inj_000~inj_127, cav_000~cav_127`�
 | local 모델 호환 | 동일 Production 모델의 `.keras` 로드·유한한 예측 확인 |
 | 학습 캐시 분리 | 화면·health 라우터·smoke 수정 시 학습 레이어 캐시 재사용, 로컬 빌드 **3.57초** |
 
-Python 3.11.17, TensorFlow 2.21.0, MLflow 3.16.0, NumPy 2.4.4이며 base MLflow run ID는 `d6c5324770884365b663ae49b6100e71`입니다. 같은 소스의 [Linux AMD64 CI](https://github.com/edder773/moldweight/actions/runs/36944917631)에서도 smoke·통합 검증을 통과했고 컨테이너 내부 p95는 **51.530ms**였습니다. 두 측정 모두 첫 로딩·학습 시간은 제외합니다.
+Python 3.11.17, TensorFlow 2.21.0, MLflow 3.16.0, NumPy 2.4.4이며 base MLflow run ID는 `d6c5324770884365b663ae49b6100e71`입니다. 최종 인프라 소스의 [Linux AMD64 CI](https://github.com/edder773/moldweight/actions/runs/36946382528)에서도 smoke·통합 검증을 통과했고 컨테이너 내부 p95는 **46.998ms**였습니다. 두 측정 모두 첫 로딩·학습 시간은 제외합니다.
 
 아래는 이전 버전의 호스트 → Docker 측정으로, 위 컨테이너 내부 측정과 경로가 다릅니다.
 
@@ -221,7 +221,7 @@ PR은 base 커밋부터 전체 변경을 비교하고 push는 이벤트의 이�
 
 Docker 베이스는 멀티 아키텍처 digest로 고정하고 Linux AMD64에서는 TensorFlow 2.21.0 CPU wheel을 사용합니다. trained는 스케일러만 준비한 뒤 모델을 한 번 학습합니다. 모델 학습 레이어를 화면·API 라우터·smoke와 분리해 해당 파일만 바뀌면 캐시를 재사용하며 데이터·모델 코드·설정 변경은 재학습합니다. 기본 로컬 baseline의 학습 동작은 유지합니다.
 
-CI는 containerd 이미지 저장소와 Docker 드라이버를 사용해 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 검증을 강제로 중단하는 2분 제한은 두지 않습니다. 1차 개선의 [실측](https://github.com/edder773/moldweight/actions/runs/36944917631)은 **5분 41초**로, [개선 전 9분 35초](https://github.com/edder773/moldweight/actions/runs/36942484118)에서 감소했습니다. 이후 변경 범위 선택과 직접 로드를 추가한 [전체 검증](https://github.com/edder773/moldweight/actions/runs/36946078324)은 **2분 8초**로 줄었습니다. 러너 기본 Docker의 containerd를 활성화해 별도 Docker 설치·종료 비용도 줄입니다.
+CI는 containerd 이미지 저장소와 Docker 드라이버를 사용해 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 검증을 강제로 중단하는 2분 제한은 두지 않습니다. 1차 개선의 [실측](https://github.com/edder773/moldweight/actions/runs/36944917631)은 **5분 41초**로, [개선 전 9분 35초](https://github.com/edder773/moldweight/actions/runs/36942484118)에서 감소했습니다. 이후 변경 범위 선택과 직접 로드를 추가한 [전체 검증](https://github.com/edder773/moldweight/actions/runs/36946078324)은 **2분 8초**로 줄었습니다. 러너 기본 Docker의 containerd를 사용하는 [최종 검사](https://github.com/edder773/moldweight/actions/runs/36946382528)는 **2분 27초**였고 runtime 검증은 **1분 12초**였습니다. 캐시 전송·러너 기동 시간이 달라 전체 검증의 2분 내 완료는 보장하지 않습니다. 정적 검사 자체는 최근 두 실행에서 7~9초였습니다.
 
 실행 요약에는 선택한 검사·이미지 크기·커밋·Production 버전·smoke·p95·통합 결과를 남깁니다. CI p95는 컨테이너 내부 loopback 측정이며 고정 합격 임계값은 없습니다. 이미지를 배포하거나 Registry에 push하지 않으며 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
 
