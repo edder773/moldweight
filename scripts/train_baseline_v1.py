@@ -11,10 +11,12 @@ train_and_register.py(MLflow 버전)로 대체됩니다.
 실행:
     python scripts/train_baseline_v1.py                      # data/sample_moldweight.csv 사용
     python scripts/train_baseline_v1.py data/uploads/xxx.csv  # 업로드 파일로 학습
+    python scripts/train_baseline_v1.py --scaler-only        # trained 빌드: 스케일러만 준비
 
 서버는 데이터 없이도 뜨므로(lazy 모드) 먼저 띄워도 됩니다:
     uvicorn serving_app.main:app --reload
 """
+import argparse
 import os
 import sys
 
@@ -22,7 +24,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.features import load_rows, build_sequences, split_indices, train_test_split, CurveScaler
 from serving_app.config import BASE_EPOCHS, RMSE_GATE, SEED, SCALER_PATH
-from serving_app.lstm_model import build_model
 
 DEFAULT_CSV = "data/sample_moldweight.csv"
 MODEL_PATH = "serving_app/models/moldweight_v1.keras"
@@ -33,14 +34,12 @@ def rmse(y_true, y_pred) -> float:
 
 
 def main():
-    import numpy as np
-    from tensorflow import keras
-
-    # 시드 고정: LSTM 가중치 초기화가 랜덤이라 시드 없이는 실행마다 검증 RMSE가 흔들려
-    # 게이트 통과 여부가 운에 좌우됩니다.
-    keras.utils.set_random_seed(SEED)
-
-    csv_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CSV
+    parser = argparse.ArgumentParser(description="학습 구간 스케일러와 로컬 baseline 준비")
+    parser.add_argument("csv_path", nargs="?", default=DEFAULT_CSV)
+    parser.add_argument("--scaler-only", action="store_true",
+                        help="모델 학습 없이 스케일러만 저장 (MLflow trained 빌드용)")
+    args = parser.parse_args()
+    csv_path = args.csv_path
     rows = load_rows(csv_path)
     print(f"{csv_path}: {len(rows)}샷 로드")
 
@@ -54,6 +53,16 @@ def main():
     print(f"  채널 min/max: inj [{scaler.channel_min[0]:.2f}, {scaler.channel_max[0]:.2f}]  "
           f"cav [{scaler.channel_min[1]:.2f}, {scaler.channel_max[1]:.2f}]")
     print(f"  무게 min/max: [{scaler.weight_min:.3f}, {scaler.weight_max:.3f}] g")
+
+    if args.scaler_only:
+        return
+
+    import numpy as np
+    from tensorflow import keras
+    from serving_app.lstm_model import build_model
+
+    # 기본 실행은 기존과 같은 시드와 epoch로 로컬 모델을 학습합니다.
+    keras.utils.set_random_seed(SEED)
 
     X, y = build_sequences(rows, scaler)
     X_train, y_train, X_test, y_test = train_test_split(X, y, rows)

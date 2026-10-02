@@ -23,6 +23,9 @@ jobs:
     name: Python, Bash and Compose checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
+      trained: ${{ steps.scope.outputs.trained }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,8 +38,29 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Verify CI selection boundaries
+        run: python -m unittest discover -s scripts -p 'test_ci_scope.py' -v
+
+      - name: Select Docker checks
+        id: scope
+        run: python scripts/ci_scope.py
+
       - name: Check Python syntax
         run: python -m compileall -q data serving_app scripts
+
+      - name: Check dashboard JavaScript syntax
+        run: |
+          python3 - <<'PYJS'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          html = Path("serving_app/static/index.html").read_text()
+          scripts = re.findall(r"<script>([\s\S]*?)</script>", html)
+          assert scripts, "대시보드 inline script가 없습니다"
+          for script in scripts:
+              subprocess.run(["node", "--check"], input=script, text=True, check=True)
+          PYJS
 
       - name: Check Bash syntax
         run: |
@@ -57,6 +81,7 @@ jobs:
   docker-runtime:
     name: Docker runtime build and startup
     needs: static-checks
+    if: needs.static-checks.outputs.runtime == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -71,8 +96,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Enable the runner containerd image store
+        run: bash scripts/ci_enable_containerd.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker
 
       - name: Build runtime image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -84,8 +114,13 @@ jobs:
           load: true
           push: false
           tags: moldweight-serving:runtime
-          cache-from: type=gha,scope=moldweight-runtime-amd64
-          cache-to: type=gha,scope=moldweight-runtime-amd64,mode=max,ignore-error=true
+          cache-from: type=gha,scope=moldweight-runtime-amd64,timeout=2m
+          cache-to: type=gha,scope=moldweight-runtime-amd64,timeout=2m,mode=max,ignore-error=true
+
+      - name: Report runtime image size
+        run: |
+          image_bytes=$(docker image inspect --format '{{.Size}}' moldweight-serving:runtime)
+          printf '### runtime image\n\nSize: %s bytes\n\n' "$image_bytes" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Start server and wait for Docker healthcheck
         run: |
@@ -129,7 +164,8 @@ jobs:
 
   docker-trained:
     name: Docker trained model and smoke
-    needs: docker-runtime
+    needs: static-checks
+    if: needs.static-checks.outputs.trained == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -144,8 +180,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Enable the runner containerd image store
+        run: bash scripts/ci_enable_containerd.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker
 
       - name: Build trained image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -158,14 +199,24 @@ jobs:
           push: false
           tags: moldweight-serving:trained
           cache-from: |
-            type=gha,scope=moldweight-runtime-amd64
-            type=gha,scope=moldweight-trained-amd64
-          cache-to: type=gha,scope=moldweight-trained-amd64,mode=max,ignore-error=true
+            type=gha,scope=moldweight-runtime-amd64,timeout=2m
+            type=gha,scope=moldweight-trained-amd64,timeout=2m
+          cache-to: type=gha,scope=moldweight-trained-amd64,timeout=2m,mode=max,ignore-error=true
+
+      - name: Report trained image size
+        run: |
+          image_bytes=$(docker image inspect --format '{{.Size}}' moldweight-serving:trained)
+          printf '### trained image\n\nSize: %s bytes\n\n' "$image_bytes" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Start server with the Production model
         run: |
           docker compose -f serving_app/docker-compose.yml up \
             --no-build --pull never -d --wait --wait-timeout 90
+
+      - name: Check trained dependencies
+        run: |
+          docker compose -f serving_app/docker-compose.yml exec -T \
+            serving-app python -m pip check
 
       - name: Verify the API uses the Registry version
         run: |
