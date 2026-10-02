@@ -473,22 +473,46 @@ function pill(level, text, big = false) { return `<span class="pill ${level}${bi
 function setStatus(level, text) { document.getElementById("drift-status").innerHTML = pill(level, text, true); }
 
 /* ===================== 서빙 상태 (health, 실제 서빙 버전) ===================== */
-async function refreshServing() {
+// 서빙 상태 조회 순번. 조회가 겹치거나 응답 순서가 뒤바뀌어도, 최신 조회가 아닌 응답은 화면·상태를 바꾸지 않는다.
+// 정지·초기화 때 번호를 올려 진행 중이던 조회를 무효화한다.
+let servingReq = 0;
+let servingLatest = null; // 가장 최근에 시작한 조회의 Promise. 밀린 조회는 이것이 끝나기를 기다려 그 결과를 돌려준다.
+// 조회 하나를 실제로 수행한다. 더 새 조회가 시작됐으면 화면·상태를 건드리지 않고 null을 돌려준다.
+async function queryServing(my) {
+  const latest = () => my === servingReq;
   const healthEl = document.getElementById("health-badge");
   const versionEl = document.getElementById("version-badge");
   try {
     const { ok, data } = await getJSON("/health");
+    if (!latest()) return null;
     if (!ok || !data) throw new Error("health 실패");
     healthEl.className = `pill ${data.model_loaded ? "ok" : "warn"}`;
     healthEl.innerHTML = `<span class="dot"></span>${data.status} · model_loaded=${data.model_loaded} · ${data.loading_mode}`;
   } catch (e) {
+    if (!latest()) return null;
     healthEl.className = "pill err";
     healthEl.innerHTML = `<span class="dot"></span>서버 연결 실패`;
   }
   // drift_check.model_version은 Registry 기준이라, 실제 서빙 중인 버전은 /predict 응답으로 확인한다.
-  const v = await fetchServingVersion();
+  const v = await fetchServingVersion(my);
+  if (!latest()) return null;
   versionEl.innerHTML = `<span class="dot"></span>서빙 모델 v${v ?? "?"}`;
   return v;
+}
+// 호출자는 항상 "최신 조회가 끝난 뒤의 서빙 버전"을 받는다. 내 조회가 다른 조회에 밀렸으면
+// (예: 승격 직후 자동 조회 중 상단 "확인" 클릭) 그 최신 조회가 끝나기를 기다려 같은 값을 돌려준다.
+// 그래야 상단 배지와 모델 상자(applyCheck의 versionAfter)가 같은 버전을 가리킨다.
+async function refreshServing() {
+  const my = ++servingReq;
+  const p = queryServing(my);
+  servingLatest = p;
+  let v = await p;
+  while (my !== servingReq) {
+    const latest = servingLatest;
+    v = await latest;
+    if (latest === servingLatest) break; // 기다리는 동안 또 새 조회가 시작됐으면 그것도 기다린다
+  }
+  return v ?? servingVersion; // 정지·초기화로만 무효화돼 새 조회가 없으면 현재 값
 }
 // 서빙 중인 모델 버전 상자. 재학습 직후에는 전/후를 함께 보여주고 교체(초록)·유지(주황)를 색으로 구분한다.
 function renderVersion(before, after, promoted) {
@@ -500,9 +524,11 @@ function renderVersion(before, after, promoted) {
   box.className = `version-box ${promoted ? "changed" : "kept"}`;
   note.textContent = promoted ? "게이트 통과 · 새 모델로 교체" : "게이트 실패 · 기존 모델 유지";
 }
-async function fetchServingVersion() {
+// my: refreshServing이 넘기는 조회 순번. 응답이 왔을 때 최신 순번이 아니면 상태를 바꾸지 않고 현재 값을 돌려준다.
+async function fetchServingVersion(my = null) {
   const sample = shotFiles.drift?.shots[0] || shotFiles.normal?.shots[0];
   const { ok, data } = await postJSON("/predict", { curve: sample ? sample.curve : ZERO_CURVE });
+  if (my != null && my !== servingReq) return servingVersion;
   if (!ok) return null;
   servingVersion = data.model_version;
   return servingVersion;
@@ -639,6 +665,7 @@ function toggleRun() { if (paused) resumeRun(); else if (running) stopRun(); els
 function stopRun() {
   running = false;
   runId++; // 진행 중이던 루프는 다음 await 뒤에 실행 번호가 달라진 것을 보고 조용히 끝난다
+  servingReq++; // 진행 중이던 서빙 상태 조회도 무효화 (늦게 온 옛 버전 응답이 화면을 덮어쓰지 않게)
   if (paused) { paused = false; hideBanner(); if (resumeResolver) { resumeResolver(); resumeResolver = null; } }
   const b = document.getElementById("btn-run");
   b.textContent = "▶ 라인 가동"; b.className = "btn primary";
