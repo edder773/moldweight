@@ -4,7 +4,7 @@
 
 ## 현재 통합 상태
 
-2026-10-02 기준, PR #1~#14가 main에 반영됐습니다. 통합 기준은 [`52bcf24`](https://github.com/edder773/moldweight/commit/52bcf24936be4312b1d0c7721fc2c570d8cdad42)입니다. 실제 모델·통합 검증에 이어 CI 경량화와 변경 범위별 검증을 적용합니다.
+2026-10-02 기준, [PR #15](https://github.com/edder773/moldweight/pull/15)의 CI 경량화와 [PR #16](https://github.com/edder773/moldweight/pull/16)의 RULES 학습·평가 기준까지 main에 반영됐습니다. 통합 기준은 [`535d6e0`](https://github.com/edder773/moldweight/commit/535d6e0e4eece1e8b325ce204bfec95572b3f47b)입니다. 실제 모델·상태 전환 검증과 변경 범위별 CI가 통과했습니다.
 
 | 영역 | 반영된 내용 |
 |---|---|
@@ -17,26 +17,31 @@
 
 실제 모델 연결과 모니터링 수정은 반영됐습니다. 예측 API에는 가짜 모델이나 `USE_MOCK_MODEL` 분기가 없습니다. 드리프트 판단용 예측 21개와 재학습용 샷 41개가 모두 모이기 전에는 재학습을 시작하지 않습니다. 배포 게이트는 NaN·무한대 RMSE를 거부하며, 스케일러는 검증 데이터를 제외한 학습 샷으로만 fit합니다.
 
-## 역할과 남은 작업
+## 역할과 GitHub 후속 작업
 
-| 역할 | 담당 | GitHub | 브랜치 | 담당 범위와 후속 작업 |
+| 역할 | 담당 | GitHub | 브랜치 | 저장소 담당 범위 |
 |---|---|---|---|---|
-| A 데이터·기획·제출 | 장인우 | @inwoo-jang | `feat/data` | 데이터·설정·RULES 관리, B의 실측을 받아 RULES 6장과 제출 자료 반영 |
-| B 모델·학습 | 이도권 | @dokwon33 | `feat/model` | 모델·스케일러·게이트·Registry, 분할 방식과 검증 수치를 A에게 전달 |
-| C 서빙 API | 김선주 | @ssunju-02 | `feat/api` | 스키마·예측·업로드·배치 API, Swagger 명세 전달 |
+| A 데이터·기획·제출 | 장인우 | @inwoo-jang | `feat/data` | 데이터·설정·RULES 관리 |
+| B 모델·학습 | 이도권 | @dokwon33 | `feat/model` | 모델·스케일러·학습·게이트·Registry |
+| C 서빙 API | 김선주 | @ssunju-02 | `feat/api` | 스키마·예측·업로드·배치 API |
 | D 모니터링·재학습 | 김주은 | @jekim20 | `feat/monitor` | 드리프트·fine-tune 연결·게이트 결과 로그 |
 | E 인프라·통합 | 김보석 | @edder773 | `feat/infra` | Docker·PR 통합·smoke·p95·CI, 실제 모델·화면 통합 검증 |
-| F 대시보드·시연 | 조영우 | @evermate | `feat/dashboard` | 샷 기반 대시보드·시뮬레이터, 시연 화면 캡처 |
+| F 대시보드·시연 | 조영우 | @evermate | `feat/dashboard` | 샷 기반 대시보드·시뮬레이터 |
 
 파일별 소유자는 RULES 1장을 따릅니다. 소유자가 아닌 파일의 수정은 해당 담당자에게 요청합니다.
 
 E 통합 검증을 완료했습니다. PR #11의 C+D 호출 경로는 승격 성공 시 reload 1회·실패 시 0회이며, lazy/eager 모드에서 확인했습니다. 이 호출 횟수 검증은 학습과 모델 로딩을 대체하여 수행했고, 아래 드리프트·게이트·버전 전환 검증은 실제 모델로 별도 수행했습니다. 대시보드의 정상 샷 전송, 게이트 실패 시 v1 유지, 게이트 통과 후 v2 전환과 알람을 확인했습니다. PR #14의 중지·초기화·조건 변경 시 이전 실행 취소도 점검했습니다.
 
-현재 후속 작업은 다음과 같습니다.
+RULES 6장의 학습·평가 기준은 PR #16으로 완료됐습니다. base 분할 420/106샷, fine-tune 분할 32/9샷, 초기 검증 RMSE 0.117g과 실측 근거가 반영됐습니다. 최근 통합 검증에서 미해결 크리티컬 문제는 확인되지 않았습니다.
 
-- **A/B:** RULES 6장의 빈 표에 실제 분할 방식과 검증 RMSE를 반영합니다. 현재 코드의 base 분할은 420/106샷, fine-tune 분할은 최근 41샷 중 32/9샷입니다.
-- **C:** 제출 자료용 Swagger 화면·API 명세를 A에게 전달합니다.
-- **F:** 현재 샷 단위 화면의 정상 판정·게이트 실패·게이트 통과·버전 전환을 캡처합니다. 중지·초기화 직전의 버전 조회 응답이 늦게 도착하면 이전 버전 표시로 덮어쓸 수 있는 후속 문제도 보완합니다. 실제 Production 전환과 중복 샷 루프에 대한 검증은 통과했습니다.
+남은 항목은 코드·문서 PR로 처리할 GitHub 작업입니다.
+
+| 담당 | 후속 작업 | 우선순위·완료 기준 |
+|---|---|---|
+| F 조영우 | `serving_app/static/index.html`의 늦은 버전 조회 응답을 실행 ID로 차단하고 수정 PR 제출 | **P2 · 비크리티컬.** `applyCheck`의 실행 ID 확인 전에 `refreshServing`·`fetchServingVersion`이 전역 버전과 화면을 갱신합니다. 중지·초기화·재가동 후 이전 v1 응답이 현재 v2 표시를 덮어쓰지 않도록 갱신 전에 실행 유효성을 확인합니다. |
+| E 김보석 | 현재 README 정리 PR의 내용·정적 CI 검토 | 최신 통합 상태와 완료 항목을 확인합니다. **현재 문서 PR은 병합 보류**이며 별도 병합 지시 후 반영합니다. |
+
+실제 Production 전환과 중복 샷 루프에 대한 검증은 통과했습니다. 위 P2는 화면의 버전 표시 문제입니다.
 
 ## 실행
 
@@ -221,7 +226,18 @@ PR은 base 커밋부터 전체 변경을 비교하고 push는 이벤트의 이�
 
 Docker 베이스는 멀티 아키텍처 digest로 고정하고 Linux AMD64에서는 TensorFlow 2.21.0 CPU wheel을 사용합니다. trained는 스케일러만 준비한 뒤 모델을 한 번 학습합니다. 모델 학습 레이어를 화면·API 라우터·smoke와 분리해 해당 파일만 바뀌면 캐시를 재사용하며 데이터·모델 코드·설정 변경은 재학습합니다. 기본 로컬 baseline의 학습 동작은 유지합니다.
 
-CI는 containerd 이미지 저장소와 Docker 드라이버를 사용해 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 검증을 강제로 중단하는 2분 제한은 두지 않습니다. 1차 개선의 [실측](https://github.com/edder773/moldweight/actions/runs/36944917631)은 **5분 41초**로, [개선 전 9분 35초](https://github.com/edder773/moldweight/actions/runs/36942484118)에서 감소했습니다. 이후 변경 범위 선택과 직접 로드를 추가한 [전체 검증](https://github.com/edder773/moldweight/actions/runs/36946078324)은 **2분 8초**로 줄었습니다. 러너 기본 Docker의 containerd를 사용하는 [최종 검사](https://github.com/edder773/moldweight/actions/runs/36946382528)는 **2분 27초**였고 runtime 검증은 **1분 12초**였습니다. 캐시 전송·러너 기동 시간이 달라 전체 검증의 2분 내 완료는 보장하지 않습니다. 정적 검사 자체는 최근 두 실행에서 7~9초였습니다.
+CI는 containerd 이미지 저장소와 Docker 드라이버로 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 필요한 검증을 강제로 중단하는 2분 제한은 두지 않습니다.
+
+최근 전체 CI 실측은 다음과 같습니다. 실행 생성부터 마지막 작업 완료까지의 경과 시간이며 각 실행은 모든 검증을 통과했습니다.
+
+| 검증 대상 | 캐시 조건 | 전체 시간 |
+|---|---|---|
+| [개선 전 PR](https://github.com/edder773/moldweight/actions/runs/36942484118) | 개선 전 CI | 9분 35초 |
+| [PR #15 최종 커밋](https://github.com/edder773/moldweight/actions/runs/36946685900) | 캐시 재사용 | **1분 57초** |
+| [main 최초 실행](https://github.com/edder773/moldweight/actions/runs/36946936122) | 새 의존성·학습 캐시 생성 | 4분 43초 |
+| [main 재검증](https://github.com/edder773/moldweight/actions/runs/36947467542) | 캐시 재사용 | **1분 37초** |
+
+main 재검증은 `535d6e0` 기준입니다. 캐시 전송·러너 기동 속도로 시간이 달라지므로 모든 실행의 2분 내 완료를 보장하지 않습니다.
 
 실행 요약에는 선택한 검사·이미지 크기·커밋·Production 버전·smoke·p95·통합 결과를 남깁니다. CI p95는 컨테이너 내부 loopback 측정이며 고정 합격 임계값은 없습니다. 이미지를 배포하거나 Registry에 push하지 않으며 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
 
