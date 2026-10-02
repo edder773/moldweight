@@ -888,7 +888,7 @@ function renderFeed() {
     return `<tr class="${sampled ? "sampled" : ""}${trusted ? "" : " untrusted"}">
       <td>${shot.cycle_counter}</td>
       <td class="pred">${fmt(predicted, 2)}${trusted ? "" : " ?"}</td>
-      <td class="${sampled ? "" : "muted"}">${sampled ? fmt(shot.actual_weight, 2) : "안 잼"}</td>
+      <td class="${sampled ? "" : "muted"}">${sampled ? fmt(shot.actual_weight, 2) : "미실측"}</td>
       <td class="${err != null && err > DRIFT_THRESHOLD ? "err" : ""}">${err == null ? "" : fmt(err, 2)}</td>
     </tr>`;
   }).join("");
