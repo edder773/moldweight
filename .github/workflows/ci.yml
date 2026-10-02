@@ -96,12 +96,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Enable the containerd image store
-        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
-        with:
-          version: v28.0.4
-          daemon-config: |
-            {"features": {"containerd-snapshotter": true}}
+      - name: Enable the runner containerd image store
+        run: bash scripts/ci_enable_containerd.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -184,12 +180,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Enable the containerd image store
-        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
-        with:
-          version: v28.0.4
-          daemon-config: |
-            {"features": {"containerd-snapshotter": true}}
+      - name: Enable the runner containerd image store
+        run: bash scripts/ci_enable_containerd.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1

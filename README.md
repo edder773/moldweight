@@ -221,7 +221,7 @@ PR은 base 커밋부터 전체 변경을 비교하고 push는 이벤트의 이�
 
 Docker 베이스는 멀티 아키텍처 digest로 고정하고 Linux AMD64에서는 TensorFlow 2.21.0 CPU wheel을 사용합니다. trained는 스케일러만 준비한 뒤 모델을 한 번 학습합니다. 모델 학습 레이어를 화면·API 라우터·smoke와 분리해 해당 파일만 바뀌면 캐시를 재사용하며 데이터·모델 코드·설정 변경은 재학습합니다. 기본 로컬 baseline의 학습 동작은 유지합니다.
 
-CI는 containerd 이미지 저장소와 Docker 드라이버를 사용해 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 검증을 강제로 중단하는 2분 제한은 두지 않습니다. 1차 개선의 [실측](https://github.com/edder773/moldweight/actions/runs/36944917631)은 **5분 41초**로, [개선 전 9분 35초](https://github.com/edder773/moldweight/actions/runs/36942484118)에서 감소했습니다. 이후 변경 범위 선택과 직접 로드를 추가했습니다.
+CI는 containerd 이미지 저장소와 Docker 드라이버를 사용해 빌드 결과를 러너에 직접 로드합니다. runtime/trained 캐시를 나누고 캐시 전송 대기 한도는 2분으로 설정합니다. 일반 수정의 2분 내 완료를 목표로 하되 최초 빌드·의존성 변경·200 epoch 재학습은 2분을 넘을 수 있습니다. 검증을 강제로 중단하는 2분 제한은 두지 않습니다. 1차 개선의 [실측](https://github.com/edder773/moldweight/actions/runs/36944917631)은 **5분 41초**로, [개선 전 9분 35초](https://github.com/edder773/moldweight/actions/runs/36942484118)에서 감소했습니다. 이후 변경 범위 선택과 직접 로드를 추가한 [전체 검증](https://github.com/edder773/moldweight/actions/runs/36946078324)은 **2분 8초**로 줄었습니다. 러너 기본 Docker의 containerd를 활성화해 별도 Docker 설치·종료 비용도 줄입니다.
 
 실행 요약에는 선택한 검사·이미지 크기·커밋·Production 버전·smoke·p95·통합 결과를 남깁니다. CI p95는 컨테이너 내부 loopback 측정이며 고정 합격 임계값은 없습니다. 이미지를 배포하거나 Registry에 push하지 않으며 결과는 [Actions](https://github.com/edder773/moldweight/actions)에서 확인합니다.
 
